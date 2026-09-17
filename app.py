@@ -171,3 +171,10 @@ st.download_button(
     mime="text/csv"
 )
 # === ここまで ===
+st.markdown("---")
+if st.button("🔄 次の人のテストを始める（画面リセット）"):
+    # 保存済みのCSVデータ(submissions)以外をクリアする
+    for key in list(st.session_state.keys()):
+        if key != "submissions":
+            del st.session_state[key]
+    st.rerun()
