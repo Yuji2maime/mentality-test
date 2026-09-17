@@ -27,7 +27,7 @@ def analyze_text_with_ai(text, key):
     
     try:
         genai.configure(api_key=key)
-        model = genai.GenerativeModel("gemini-2.0-flash")
+        model = genai.GenerativeModel("gemini-3.6-flash")
         
         prompt = f"""
         以下の応募者の記述文章を心理・認知特性の観点から分析してください。
