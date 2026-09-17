@@ -150,3 +150,24 @@ else:
                     st.session_state.submissions[idx]["selected_auxs"] = selected_auxs
                     st.session_state.submissions[idx]["memo"] = memo
                     st.success(f"提出データ #{sub['id']} の評価を更新しました！")
+
+# === ここから下を新しく追加 ===
+st.markdown("---")
+st.subheader("💾 データのダウンロード")
+
+# ダウンロード用のCSVデータを作成
+csv_data = "応募者ID,主タイプ,補助機能,採用・評価メモ\n"
+for sub in st.session_state.submissions:
+    sub_id = str(sub.get('id', ''))
+    mains = "、".join(sub.get('selected_mains', []))
+    auxs = "、".join(sub.get('selected_auxs', []))
+    memo = str(sub.get('memo', '')).replace('"', '""')
+    csv_data += f'"{sub_id}","{mains}","{auxs}","{memo}"\n'
+
+st.download_button(
+    label="📥 評価結果をCSVでダウンロード",
+    data=csv_data.encode("utf-8-sig"),
+    file_name="evaluation_results.csv",
+    mime="text/csv"
+)
+# === ここまで ===
