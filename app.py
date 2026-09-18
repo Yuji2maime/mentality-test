@@ -12,9 +12,8 @@ if "submissions" not in st.session_state:
 if "view_mode" not in st.session_state:
     st.session_state.view_mode = "applicant"
 
-# サイドバーでAPIキー設定
-st.sidebar.title("設定")
-api_key = st.sidebar.text_input("Gemini API Key", type="password", help="APIキーを入れるとAI自動解析が有効化されます")
+# SecretsからAPIキーを自動読み込み
+api_key = st.secrets["GEMINI_API_KEY"]
 
 # 選択肢の定義
 MAIN_TYPE_OPTIONS = ["Fe-Si", "Se-Ti", "Ne-Fi", "Ni-Te", "Si-Fe", "Ti-Ne", "Fi-Ne", "Te-Ni", "その他"]
