@@ -14,7 +14,32 @@ if "view_mode" not in st.session_state:
 
 # SecretsからAPIキーを自動読み込み
 api_key = st.secrets["GEMINI_API_KEY"]
+# --- サイドバー機能：ホーム画面追加案内 & データ削除 ---
+with st.sidebar:
+    st.header("⚙️ アプリ機能")
 
+    # 1. スマホのホーム画面追加案内
+    with st.expander("📱 ホーム画面に追加する方法"):
+        st.markdown("""
+        次回からワンタップで開けるよう、ホーム画面に追加しておくと便利です。
+        
+        **【iPhone (Safari)】**
+        1. 画面下の **共有ボタン（□に↑）** をタップ
+        2. **「ホーム画面に追加」** を選択
+        
+        **【Android (Chrome)】**
+        1. 画面右上の **「3点リーダー（⋮）」** をタップ
+        2. **「ホーム画面に追加」** または **「アプリをインストール」** を選択
+        """)
+
+    # 2. 保存データの削除機能
+    st.subheader("🗑️ データ管理")
+    if st.button("保存された履歴データをすべて削除", use_container_width=True):
+        st.session_state.submissions = []
+        st.success("すべての履歴データを削除しました！")
+        st.rerun()
+
+st.sidebar.markdown("---")
 # 選択肢の定義
 MAIN_TYPE_OPTIONS = ["Fe-Si", "Se-Ti", "Ne-Fi", "Ni-Te", "Si-Fe", "Ti-Ne", "Fi-Ne", "Te-Ni", "その他"]
 AUX_FUNC_OPTIONS = ["外向感情(Fe)", "内向感覚(Si)", "外向直観(Ne)", "内向思考(Ti)", "外向感覚(Se)", "内向感情(Fi)", "外向思考(Te)", "内向直観(Ni)"]
