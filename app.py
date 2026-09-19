@@ -158,23 +158,23 @@ else:
             st.subheader("【応募者の記述内容】")
             st.write(sub["text"])
                 
-            st.subheader("【AI拡張解析・ラベリングエリア】")
-                col1, col2 = st.columns(2)
-                
-                with col1:
-                    selected_mains = st.multiselect(
-                        "主タイプ（該当するものすべて）",
-                        options=MAIN_TYPE_OPTIONS,
-                        default=sub["selected_mains"],
-                        key=f"main_{sub['id']}"
-                    )
-                with col2:
-                    selected_auxs = st.multiselect(
-                        "補助機能（複数認定）",
-                        options=AUX_FUNC_OPTIONS,
-                        default=sub["selected_auxs"],
-                        key=f"aux_{sub['id']}"
-                    )
+        st.subheader("【AI拡張解析・ラベリングエリア】")
+            col1, col2 = st.columns(2)
+            
+            with col1:
+                selected_mains = st.multiselect(
+                    "主タイプ（該当するものすべて）",
+                    options=MAIN_TYPE_OPTIONS,
+                    default=sub["selected_mains"],
+                    key=f"main_{sub['id']}"
+                )
+            with col2:
+                selected_auxs = st.multiselect(
+                    "補助機能（複数認定）",
+                    options=AUX_FUNC_OPTIONS,
+                    default=sub["selected_auxs"],
+                    key=f"aux_{sub['id']}"
+                )
                 
                 memo = st.text_area(
                     "採用・評価メモ（認知の癖、リスク、矛盾点など）",
