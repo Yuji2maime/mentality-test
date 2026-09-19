@@ -147,12 +147,18 @@ else:
     if not st.session_state.submissions:
         st.info("まだ提出されたデータはありません。")
     else:
-        for idx, sub in enumerate(st.session_state.submissions):
-            with st.expander(f"提出データ #{sub['id']} (日時: {sub['timestamp']})", expanded=True):
-                st.subheader("【応募者の記述内容】")
+       for idx, sub in enumerate(st.session_state.submissions):
+        with st.expander(f"提出データ #{sub['id']} (日時: {sub['timestamp']})", expanded=True):
+            # --- 追加：個別削除ボタン ---
+            if st.button("🗑️ このデータを削除", key=f"del_btn_{sub['id']}"):
+                st.session_state.submissions.pop(idx)
+                st.rerun()
+            # ----------------------------
+            
+            st.subheader("【応募者の記述内容】")
                 st.write(sub["text"])
                 
-                st.subheader("【AI拡張解析・ラベリングエリア】")
+            st.subheader("【AI拡張解析・ラベリングエリア】")
                 col1, col2 = st.columns(2)
                 
                 with col1:
