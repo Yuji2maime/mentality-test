@@ -156,7 +156,7 @@ else:
             # ----------------------------
             
             st.subheader("【応募者の記述内容】")
-                st.write(sub["text"])
+            st.write(sub["text"])
                 
             st.subheader("【AI拡張解析・ラベリングエリア】")
                 col1, col2 = st.columns(2)
