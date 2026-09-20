@@ -59,11 +59,11 @@ if "submissions" in st.session_state and st.session_state.submissions:
 
 # 綺麗にしたデータをCSVにエクスポート
 csv_data = df.to_csv(index=False).encode("utf-8-sig")
-    st.sidebar.download_button(
-        label="📄 履歴をCSVでダウンロード",＾
-        data=csv_data,
-        file_name="cognitive_test_submissions.csv",
-        mime="text/csv",
+st.sidebar.download_button(
+    label="📄 履歴をCSVでダウンロード",
+    data=csv_data,
+    file_name="cognitive_test_submissions.csv",
+    mime="text/csv",
     )
 else:
     st.sidebar.info("ダウンロード可能なデータはありません。")
