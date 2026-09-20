@@ -63,7 +63,30 @@ if "submissions" in st.session_state and st.session_state.submissions:
         data=csv_data,
         file_name="cognitive_test_submissions.csv",
         mime="text/csv",
-    )
+    )# === ▼ ここから追加：検索メニューと表の表示 ▼ ===
+    st.sidebar.markdown("---")
+    st.sidebar.subheader("🔍 データの検索・絞り込み")
+    
+    # サイドバー：キーワード検索
+    search_query = st.sidebar.text_input("キーワード検索 (名前やメモなど)")
+    
+    # サイドバー：主タイプの絞り込み
+    type_options = ["Fe-Si", "Se-Ti", "Ne-Fi", "Ni-Te", "Si-Fe", "Ti-Ne", "Fi-Ne", "Te-Ni", "その他"]
+    selected_types = st.sidebar.multiselect("主タイプで絞り込み", type_options)
+    
+    # 絞り込みの実行
+    filtered_df = df.copy()
+    if search_query:
+        mask = filtered_df.astype(str).apply(lambda x: x.str.contains(search_query, case=False, na=False)).any(axis=1)
+        filtered_df = filtered_df[mask]
+    if selected_types:
+        if "主タイプ" in filtered_df.columns:
+            filtered_df = filtered_df[filtered_df["主タイプ"].isin(selected_types)]
+            
+    # メイン画面：絞り込まれたデータを表として表示
+    st.write("### 📋 提出データ一覧")
+    st.dataframe(filtered_df, use_container_width=True)
+    # === ▲ 追加ここまで ▲ ===
 else:
     st.sidebar.info("ダウンロード可能なデータはありません。 ")
 st.sidebar.markdown("---")
