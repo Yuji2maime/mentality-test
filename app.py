@@ -3,7 +3,7 @@ import google.generativeai as genai
 import datetime
 import json
 import os
-
+import pandas as pd
 st.set_page_config(page_title="AI統合型 認知特性テスト", layout="wide")
 
 # セッション状態の初期化
@@ -43,7 +43,23 @@ with st.sidebar:
         st.session_state.submissions = []
         st.success("すべての履歴データを削除しました！")
         st.rerun()
+# --- データ管理エリアへのCSVダウンロード機能追加 ---
+st.sidebar.markdown("---")
+st.sidebar.subheader("📥 データダウンロード")
 
+if "submissions" in st.session_state and st.session_state.submissions:
+    # データをPandasのDataFrameに変換してCSVにエクスポート
+    df = pd.DataFrame(st.session_state.submissions)
+    csv_data = df.to_csv(index=False).encode("utf-8-sig")
+
+    st.sidebar.download_button(
+        label="📄 履歴をCSVでダウンロード",
+        data=csv_data,
+        file_name="cognitive_test_submissions.csv",
+        mime="text/csv",
+    )
+else:
+    st.sidebar.info("ダウンロード可能なデータはありません。")
 st.sidebar.markdown("---")
 # 選択肢の定義
 MAIN_TYPE_OPTIONS = ["Fe-Si", "Se-Ti", "Ne-Fi", "Ni-Te", "Si-Fe", "Ti-Ne", "Fi-Ne", "Te-Ni", "その他"]
