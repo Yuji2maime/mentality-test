@@ -151,9 +151,14 @@ with col_nav1:
         st.session_state.view_mode = "applicant"
         st.rerun()
 with col_nav2:
-    if st.button("採用側（管理）画面へ切り替え"):
-        st.session_state.view_mode = "admin"
-        st.rerun()
+        with st.expander("採用側（管理）画面へ"):
+            admin_pass = st.text_input("パスワードを入力", type="password")
+            if admin_pass == "7777":  # 好きなパスワードに変更可能です
+                if st.button("ログインして切り替え"):
+                    st.session_state.view_mode = "admin"
+                    st.rerun()
+            elif admin_pass != "":
+                st.error("パスワードが違います")
 
 st.divider()
 
