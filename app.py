@@ -48,10 +48,17 @@ st.sidebar.markdown("---")
 st.sidebar.subheader("📥 データダウンロード")
 
 if "submissions" in st.session_state and st.session_state.submissions:
-    # データをPandasのDataFrameに変換してCSVにエクスポート
-    df = pd.DataFrame(st.session_state.submissions)
-    csv_data = df.to_csv(index=False).encode("utf-8-sig")
+    # データをPandasのDataFrameに変換
+df = pd.DataFrame(st.session_state.submissions)
 
+# --- ▼ すべての列のカッコ [ ] や引用符 ' ' を綺麗に外す処理 ▼ ---
+for col in df.columns:
+    df[col] = df[col].apply(lambda x: ', '.join(x) if isinstance(x, list) else x)
+    df[col] = df[col].apply(lambda x: str(x).replace("['", "").replace("']", "") if isinstance(x, str) and str(x).startswith("['") else x)
+# --- ▲ 追加ここまで ▲ ---
+
+# 綺麗にしたデータをCSVにエクスポート
+csv_data = df.to_csv(index=False).encode("utf-8-sig")
     st.sidebar.download_button(
         label="📄 履歴をCSVでダウンロード",
         data=csv_data,
