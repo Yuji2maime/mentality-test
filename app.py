@@ -4,6 +4,7 @@ import datetime
 import json
 import os
 import pandas as pd
+import plotly.graph_objects as go
 st.set_page_config(page_title="AI統合型 認知特性テスト", layout="wide")
 
 # セッション状態の初期化
