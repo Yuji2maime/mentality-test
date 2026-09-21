@@ -263,8 +263,15 @@ st.subheader("📊 認知特性・傾向分析（レーダーチャート）")
 # 評価軸（項目）の設定
 categories = ['論理的分析力', '直観・本質把握', '計画・規律性', '独立・内省力', '対人・柔軟性']
 
-# サンプル値
-scores = [85, 75, 90, 80, 50]
+# 診断結果から各評価軸のスコアを取得
+ai_scores = sub.get('scores', {})
+scores = [
+    ai_scores.get('論理分析力', 50),
+    ai_scores.get('直観・本質把握', 50),
+    ai_scores.get('計画・規律性', 50),
+    ai_scores.get('独立・内省力', 50),
+    ai_scores.get('対人・柔軟性', 50)
+]
 
 # レーダーチャートの生成
 fig = go.Figure()
