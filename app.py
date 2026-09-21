@@ -299,20 +299,64 @@ st.plotly_chart(fig, use_container_width=True)
 st.markdown("---")
 st.subheader("💾 データのダウンロード")
 
-# ダウンロード用のCSVデータを作成
-csv_data = "応募者ID,主タイプ,補助機能,採用・評価メモ\n"
+# === Excelファイルの作成とレイアウト設定 ===
+import io
+from openpyxl import Workbook
+from openpyxl.styles import Font, PatternFill, Alignment
+
+wb = Workbook()
+ws = wb.active
+ws.title = "評価結果"
+
+# ヘッダー（見出し）の設定
+headers = ["応募者ID", "主タイプ", "補助機能", "採用・評価メモ"]
+ws.append(headers)
+
+# ヘッダーの装飾（青背景、白文字、太字、中央揃え）
+header_fill = PatternFill(start_color="4F81BD", end_color="4F81BD", fill_type="solid")
+header_font = Font(color="FFFFFF", bold=True)
+for col_num, cell in enumerate(ws[1], 1):
+    cell.fill = header_fill
+    cell.font = header_font
+    cell.alignment = Alignment(horizontal="center", vertical="center")
+
+# データの追加
 for sub in st.session_state.submissions:
     sub_id = str(sub.get('id', ''))
     mains = "、".join(sub.get('selected_mains', []))
     auxs = "、".join(sub.get('selected_auxs', []))
-    memo = str(sub.get('memo', '')).replace('"', '""')
-    csv_data += f'"{sub_id}","{mains}","{auxs}","{memo}"\n'
+    memo = str(sub.get('memo', ''))
+    ws.append([sub_id, mains, auxs, memo])
+
+# 列幅の調整と折り返し設定
+for col in ws.columns:
+    max_length = 0
+    column_letter = col[0].column_letter
+    for cell in col:
+        # D列（メモ）は幅を固定して折り返し表示
+        if column_letter == 'D':
+            cell.alignment = Alignment(wrap_text=True, vertical="top")
+            ws.column_dimensions[column_letter].width = 50
+        else:
+            try:
+                if len(str(cell.value)) > max_length:
+                    max_length = len(str(cell.value))
+            except:
+                pass
+            ws.column_dimensions[column_letter].width = (max_length + 3)
+
+# Excelファイルをメモリ上に保存
+excel_buffer = io.BytesIO()
+wb.save(excel_buffer)
+excel_data = excel_buffer.getvalue()
 
 st.download_button(
-    label="📥 評価結果をCSVでダウンロード",
-    data=csv_data.encode("utf-8-sig"),
-    file_name="evaluation_results.csv",
-    mime="text/csv"
+    label="📥 評価結果をExcelでダウンロード",
+    data=excel_data,
+    file_name="evaluation_results.xlsx",
+    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+)
+# ========================================
 )
 # === ここまで ===
 st.markdown("---")
