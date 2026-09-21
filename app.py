@@ -256,7 +256,36 @@ else:
                     st.session_state.submissions[idx]["memo"] = memo
                     
                     # 成功メッセージを表示
-                    st.success(f"🎉 提出データ #{sub['id']} の評価を保存・更新しました！")              
+                    st.success(f"🎉 提出データ #{sub['id']} の評価を保存・更新しました！") 
+# --- 診断結果のレーダーチャート表示（UIテスト用） ---
+st.subheader("📊 認知特性・傾向分析（レーダーチャート）")
+
+# 評価軸（項目）の設定
+categories = ['論理的分析力', '直観・本質把握', '計画・規律性', '独立・内省力', '対人・柔軟性']
+
+# サンプル値
+scores = [85, 75, 90, 80, 50]
+
+# レーダーチャートの生成
+fig = go.Figure()
+fig.add_trace(go.Scatterpolar(
+r=scores + [scores[0]], 
+theta=categories + [categories[0]],
+fill='toself',
+fillcolor='rgba(0, 123, 255, 0.3)',
+line=dict(color='rgba(0, 123, 255, 1.0)', width=2),
+name='特性スコア'
+))
+
+fig.update_layout(
+polar=dict(
+radialaxis=dict(visible=True, range=[0, 100])
+),
+showlegend=False,
+margin=dict(l=20, r=20, t=20, b=20)
+)
+
+st.plotly_chart(fig, use_container_width=True)
 # === ここから下を新しく追加 ===
 st.markdown("---")
 st.subheader("💾 データのダウンロード")
