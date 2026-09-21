@@ -264,7 +264,9 @@ st.subheader("📊 認知特性・傾向分析（レーダーチャート）")
 categories = ['論理的分析力', '直観・本質把握', '計画・規律性', '独立・内省力', '対人・柔軟性']
 
 # 診断結果から各評価軸のスコアを取得
-ai_scores = sub.get('scores', {})
+# エラー回避：保存データがあれば最新のものを取得、なければ空にする
+current_sub = st.session_state.submissions[-1] if st.session_state.submissions else {}
+ai_scores = current_sub.get('scores', {})
 scores = [
     ai_scores.get('論理分析力', 50),
     ai_scores.get('直観・本質把握', 50),
