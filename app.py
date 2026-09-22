@@ -114,7 +114,7 @@ def analyze_text_with_ai(text, key):
 
     try:
         genai.configure(api_key=key)
-        model = genai.GenerativeModel("gemini-2.5-flash")
+        model = genai.GenerativeModel("gemini-2.0-flash")
 
         prompt = f"""
 以下の応募者の記述文章を、プロの労務・人事評価者の視点から客観的かつ厳格に分析してください。
