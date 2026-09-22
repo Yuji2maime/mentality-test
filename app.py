@@ -191,24 +191,23 @@ if st.session_state.view_mode == "applicant":
     user_input = st.text_area("記述欄", height=200, key="applicant_text")
     
 if st.button("これで完了する（終了）", type="primary"):
-                if user_input.strip():
-                    with st.spinner("AIが回答内容を事前解析中..."):
-                        mains, auxs, memo, scores = analyze_text_with_ai(user_input, api_key)
+        if user_input.strip():
+            with st.spinner("AIが回答内容を事前解析中..."):
+                mains, auxs, memo, scores = analyze_text_with_ai(user_input, api_key)
 
-                    new_data = {
-                        "id": len(st.session_state.submissions) + 1,
-                        "timestamp": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-                        "text": user_input,
-                        "selected_mains": mains,
-                        "selected_auxs": auxs,
-                        "memo": memo,
-                        "scores": scores
-                    }
+            new_data = {
+                "id": len(st.session_state.submissions) + 1,
+                "timestamp": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                "text": user_input,
+                "selected_mains": mains,
+                "selected_auxs": auxs,
+                "memo": memo,
+                "scores": scores
+            }
             st.session_state.submissions.append(new_data)
             st.success("送信が完了しました。ご協力ありがとうございました。")
         else:
             st.warning("文章を入力してから送信してください。")
-
 # 2. 管理者画面
 else:
     st.title("採用管理画面")
