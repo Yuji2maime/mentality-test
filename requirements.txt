@@ -1,4 +1,3 @@
 streamlit
-google-generativeai
 plotly
-openpyxl
+google-generativeai>=0.8.0
