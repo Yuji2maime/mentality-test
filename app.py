@@ -357,7 +357,7 @@ st.download_button(
     mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
 )
 # ========================================
-)
+
 # === ここまで ===
 st.markdown("---")
 if st.button("🔄 次の人のテストを始める（画面リセット）"):
