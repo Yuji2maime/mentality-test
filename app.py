@@ -110,12 +110,12 @@ AUX_FUNC_OPTIONS = ["外向感情(Fe)", "内向感覚(Si)", "外向直観(Ne)", 
 def analyze_text_with_ai(text, key):
     """応募者の文章をGemini APIで自動解析する関数"""
     if not key:
-        return [], [], "※APIキー未設定のため自動解析スキップ。手動で入力してください。"
-    
+        return [], [], "※APIキー未設定のため自動解析スキップ。手動で入力してください。", {}
+
     try:
         genai.configure(api_key=key)
-        model = genai.GenerativeModel("gemini-3.6-flash")
-        
+        model = genai.GenerativeModel("gemini-1.5-flash")
+
         prompt = f"""
 以下の応募者の記述文章を、プロの労務・人事評価者の視点から客観的かつ厳格に分析してください。
 
@@ -126,36 +126,44 @@ def analyze_text_with_ai(text, key):
 1. 主タイプ（該当するもの）：{MAIN_TYPE_OPTIONS}の中から選んでください。
 2. 補助機能（複数認定）：{AUX_FUNC_OPTIONS}の中から選んでください。
 3. 採用・評価メモ：以下の観点を含め、客観的・事実ベースのトーン（150〜250文字程度）でまとめてください。
-・組織適応性および規律・コンプライアンス意識
-・認知の癖と職場における潜在リスク（対人・業務面の懸念点）
-・面接時に深掘り・確認すべき具体的なポイント
+   ・組織適応性および規律・コンプライアンス意識
+   ・認知の癖と職場における潜在リスク（対人・業務面の懸念点）
+   ・面接時に深掘り・確認すべき具体的なポイント
+4. 特性スコア：上記評価に基づき、以下の5項目を0〜100点で採点してください。
+   ・論理的分析力
+   ・直観・本質把握
+   ・計画・規律性
+   ・独立・内省力
+   ・対人・柔軟性
 
 【回答形式】
 必ず以下のJSON形式のみで出力してください（余計な解説は不要です）：
 {{
-"main_types": ["選択したタイプ"],
-"aux_funcs": ["選択した補助機能"],
-"eval_memo": "生成された評価メモ文章"
+  "main_types": ["選択したタイプ"],
+  "aux_funcs": ["選択した補助機能"],
+  "eval_memo": "生成された評価メモ文章",
+  "scores": {{
+    "論理的分析力": 75,
+    "直観・本質把握": 80,
+    "計画・規律性": 60,
+    "独立・内省力": 85,
+    "対人・柔軟性": 70
+  }}
 }}
 """
-        
         response = model.generate_content(prompt)
         res_text = response.text.strip()
-        
+
         if "```json" in res_text:
             res_text = res_text.split("```json")[1].split("```")[0].strip()
         elif "```" in res_text:
             res_text = res_text.split("```")[1].split("```")[0].strip()
-            
+
         data = json.loads(res_text)
-        
-        # 選択肢に存在する値のみフィルタリング
-        valid_mains = [m for m in data.get("main_types", []) if m in MAIN_TYPE_OPTIONS]
-        valid_auxs = [a for a in data.get("aux_funcs", []) if a in AUX_FUNC_OPTIONS]
-        
-        return valid_mains, valid_auxs, data.get("eval_memo", "")
+        return data.get("main_types", []), data.get("aux_funcs", []), data.get("eval_memo", ""), data.get("scores", {})
+
     except Exception as e:
-        return [], [], f"AI自動解析エラー: {str(e)}"
+        return [], [], f"AI解析エラー: {e}", {}
 
 # 画面切り替えボタン
 col_nav1, col_nav2 = st.columns([1, 1])
@@ -185,16 +193,17 @@ if st.session_state.view_mode == "applicant":
     if st.button("これで完了する（終了）", type="primary"):
         if user_input.strip():
             with st.spinner("AIが回答内容を事前解析中..."):
-                mains, auxs, memo = analyze_text_with_ai(user_input, api_key)
-            
-            new_data = {
-                "id": len(st.session_state.submissions) + 1,
-                "timestamp": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-                "text": user_input,
-                "selected_mains": mains,
-                "selected_auxs": auxs,
-                "memo": memo
-            }
+mains, auxs, memo, scores = analyze_text_with_ai(user_input, api_key)
+
+                    new_data = {
+                        "id": len(st.session_state.submissions) + 1,
+                        "timestamp": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                        "text": user_input,
+                        "selected_mains": mains,
+                        "selected_auxs": auxs,
+                        "memo": memo,
+                        "scores": scores
+                    }
             st.session_state.submissions.append(new_data)
             st.success("送信が完了しました。ご協力ありがとうございました。")
         else:
