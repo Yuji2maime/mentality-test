@@ -333,11 +333,11 @@ categories = ['論理的分析力', '直観・本質把握', '計画・規律性
 current_sub = st.session_state.submissions[-1] if st.session_state.submissions else {}
 ai_scores = current_sub.get('scores', {})
 scores = [
-    ai_scores.get('論理分析力', 50),
-    ai_scores.get('直観・本質把握', 50),
-    ai_scores.get('計画・規律性', 50),
-    ai_scores.get('独立・内省力', 50),
-    ai_scores.get('対人・柔軟性', 50)
+    ai_scores.get('logic', 50),
+    ai_scores.get('intuition', 50),
+    ai_scores.get('planning', 50),
+    ai_scores.get('independence', 50),
+    ai_scores.get('flexibility', 50)
 ]
 
 # レーダーチャートの生成
