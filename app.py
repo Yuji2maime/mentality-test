@@ -190,10 +190,10 @@ if st.session_state.view_mode == "applicant":
     
     user_input = st.text_area("記述欄", height=200, key="applicant_text")
     
-    if st.button("これで完了する（終了）", type="primary"):
-        if user_input.strip():
-            with st.spinner("AIが回答内容を事前解析中..."):
-mains, auxs, memo, scores = analyze_text_with_ai(user_input, api_key)
+if st.button("これで完了する（終了）", type="primary"):
+                if user_input.strip():
+                    with st.spinner("AIが回答内容を事前解析中..."):
+                        mains, auxs, memo, scores = analyze_text_with_ai(user_input, api_key)
 
                     new_data = {
                         "id": len(st.session_state.submissions) + 1,
