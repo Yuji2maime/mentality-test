@@ -108,38 +108,41 @@ MAIN_TYPE_OPTIONS = ["Fe-Si", "Se-Ti", "Ne-Fi", "Ni-Te", "Si-Fe", "Ti-Ne", "Fi-N
 AUX_FUNC_OPTIONS = ["外向感情(Fe)", "内向感覚(Si)", "外向直観(Ne)", "内向思考(Ti)", "外向感覚(Se)", "内向感情(Fi)", "外向思考(Te)", "内向直観(Ni)"]
 
 def analyze_text_with_ai(text, key):
-    """応募者の文章をGemini APIで自動解析する関数（APIから利用可能モデルを自動取得する完全版）"""
+    """応募者の文章をGemini APIで自動解析する関数（数値抽出を強化）"""
     if not key:
-        return [], [], "※APIキー未設定のため自動解析スキップ。手動で入力してください。", {}
+        return [], [], "※APIキー未設定のため自動解析ステップ。手動で入力してください。", {}
 
     try:
         genai.configure(api_key=key)
-        
+
         prompt = f"""
-以下の応募者の記述文章を、プロの労務・人事評価者の視点から客観的かつ厳格に分析してください。
+以下の応募者の記述文章をプロの労務・人事評価者の視点から客観的かつ厳格に分析してください。
 
 【応募者記述文章】
 {text}
 
+【選択肢の定義】
+MAIN_TYPE_OPTIONS = {MAIN_TYPE_OPTIONS}
+AUX_FUNC_OPTIONS = {AUX_FUNC_OPTIONS}
+
 【分析指示】
-1. 主タイプ（該当するもの）：{MAIN_TYPE_OPTIONS}の中から選んでください。
-2. 補助機能（複数認定）：{AUX_FUNC_OPTIONS}の中から選んでください。
+1. 主タイプ（該当するもの）：MAIN_TYPE_OPTIONSの中から1つ以上選んでください。
+2. 補助機能（複数認定）：AUX_FUNC_OPTIONSの中から選んでください。
 3. 採用・評価メモ：以下の観点を含め、客観的・事実ベースのトーン（150〜250文字程度）でまとめてください。
    - 組織適応性および規律・コンプライアンス意識
    - 思考・行動の偏りと潜在的リスク（例：独断的傾向、対人コミュニケーションの課題、ストレス耐性など）
    - 評価時の注意事項・面接での確認推奨事項
-
-4. 認知特性スコア（0〜100の数値評価）：以下の5指標について、記述内容に基づき客観的に数値化してください。
-   - "logic": 論理的分析力（思考の整合性、客観的根拠）
-   - "intuition": 直観・本質把握（全体像の理解、物事の本質追求）
-   - "planning": 計画・規律性（ルール順守、計画性、慎重さ）
-   - "independence": 独立・内省力（自己評価、単独行動力、自立性）
-   - "flexibility": 対人・柔軟性（協調性、他者配慮、状況適応力）
+4. 認知特性スコア（0〜100の数値）：記述内容に基づき以下の5項目を評価・数値化してください。
+   - logic: 論理的分析力
+   - intuition: 直観・本質把握
+   - planning: 計画・規律性
+   - independence: 独立・内省力
+   - flexibility: 対人・柔軟性
 
 必ず以下のJSON形式のみで出力してください。Markdownの装飾コードブロック（```json ... ```）は含めないでください。
 
 {{
-  "main_types": ["タイプ名1"],
+  "main_types": ["タイプ名"],
   "aux_funcs": ["補助機能1", "補助機能2"],
   "eval_memo": "評価メモ本文...",
   "scores": {{
@@ -152,7 +155,6 @@ def analyze_text_with_ai(text, key):
 }}
 """
 
-        # 利用可能なモデル一覧をAPIから自動取得
         available_models = []
         try:
             for m in genai.list_models():
@@ -164,7 +166,6 @@ def analyze_text_with_ai(text, key):
         if not available_models:
             available_models = ["models/gemini-1.5-flash", "models/gemini-2.0-flash", "models/gemini-1.5-pro"]
 
-        # 優先度の高い軽量・高速モデルを前方にソート
         priority_keywords = ["2.0-flash", "1.5-flash", "flash", "1.5-pro"]
         sorted_models = []
         for kw in priority_keywords:
@@ -189,7 +190,7 @@ def analyze_text_with_ai(text, key):
                 except Exception:
                     model = genai.GenerativeModel(model_name)
                     response = model.generate_content(prompt)
-                
+
                 if response and response.text:
                     res_text = response.text.strip()
                     break
@@ -198,7 +199,7 @@ def analyze_text_with_ai(text, key):
                 continue
 
         if not res_text:
-            raise last_error if last_error else Exception("利用可能なGeminiモデルで応答が取得できませんでした。APIキーの権限・有効期限をご確認ください。")
+            raise last_error if last_error else Exception("利用可能なGeminiモデルで応答が取得できませんでした。")
 
         if "```json" in res_text:
             res_text = res_text.split("```json")[1].split("```")[0].strip()
@@ -206,11 +207,21 @@ def analyze_text_with_ai(text, key):
             res_text = res_text.split("```")[1].split("```")[0].strip()
 
         data = json.loads(res_text)
-        return data.get("main_types", []), data.get("aux_funcs", []), data.get("eval_memo", ""), data.get("scores", {})
+        
+        # スコアの型変換と安全性の確保
+        raw_scores = data.get("scores", {})
+        scores = {
+            "logic": int(raw_scores.get("logic", 50)),
+            "intuition": int(raw_scores.get("intuition", 50)),
+            "planning": int(raw_scores.get("planning", 50)),
+            "independence": int(raw_scores.get("independence", 50)),
+            "flexibility": int(raw_scores.get("flexibility", 50))
+        }
+
+        return data.get("main_types", []), data.get("aux_funcs", []), data.get("eval_memo", ""), scores
 
     except Exception as e:
         return [], [], f"AI解析エラー: {e}", {}
-
 # 画面切り替えボタン
 col_nav1, col_nav2 = st.columns([1, 1])
 with col_nav1:
