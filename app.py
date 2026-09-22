@@ -108,14 +108,13 @@ MAIN_TYPE_OPTIONS = ["Fe-Si", "Se-Ti", "Ne-Fi", "Ni-Te", "Si-Fe", "Ti-Ne", "Fi-N
 AUX_FUNC_OPTIONS = ["外向感情(Fe)", "内向感覚(Si)", "外向直観(Ne)", "内向思考(Ti)", "外向感覚(Se)", "内向感情(Fi)", "外向思考(Te)", "内向直観(Ni)"]
 
 def analyze_text_with_ai(text, key):
-    """応募者の文章をGemini APIで自動解析する関数"""
+    """応募者の文章をGemini APIで自動解析する関数（自動モデル選択機能付き）"""
     if not key:
         return [], [], "※APIキー未設定のため自動解析スキップ。手動で入力してください。", {}
 
     try:
         genai.configure(api_key=key)
-        model = genai.GenerativeModel("gemini-2.0-flash")
-
+        
         prompt = f"""
 以下の応募者の記述文章を、プロの労務・人事評価者の視点から客観的かつ厳格に分析してください。
 
@@ -126,33 +125,65 @@ def analyze_text_with_ai(text, key):
 1. 主タイプ（該当するもの）：{MAIN_TYPE_OPTIONS}の中から選んでください。
 2. 補助機能（複数認定）：{AUX_FUNC_OPTIONS}の中から選んでください。
 3. 採用・評価メモ：以下の観点を含め、客観的・事実ベースのトーン（150〜250文字程度）でまとめてください。
-   ・組織適応性および規律・コンプライアンス意識
-   ・認知の癖と職場における潜在リスク（対人・業務面の懸念点）
-   ・面接時に深掘り・確認すべき具体的なポイント
-4. 特性スコア：上記評価に基づき、以下の5項目を0〜100点で採点してください。
-   ・論理的分析力
-   ・直観・本質把握
-   ・計画・規律性
-   ・独立・内省力
-   ・対人・柔軟性
+   - 組織適応性および規律・コンプライアンス意識
+   - 思考・行動の偏りと潜在的リスク（例：独断的傾向、対人コミュニケーションの課題、ストレス耐性など）
+   - 評価時の注意事項・面接での確認推奨事項
 
-【回答形式】
-必ず以下のJSON形式のみで出力してください（余計な解説は不要です）：
+4. 認知特性スコア（0〜100の数値評価）：以下の5指標について、記述内容に基づき客観的に数値化してください。
+   - "logic": 論理的分析力（思考の整合性、客観的根拠）
+   - "intuition": 直観・本質把握（全体像の理解、物事の本質追求）
+   - "planning": 計画・規律性（ルール順守、計画性、慎重さ）
+   - "independence": 独立・内省力（自己評価、単独行動力、自立性）
+   - "flexibility": 対人・柔軟性（協調性、他者配慮、状況適応力）
+
+必ず以下のJSON形式のみで出力してください。Markdownの装飾コードブロック（```json ... ```）は含めないでください。
+
 {{
-  "main_types": ["選択したタイプ"],
-  "aux_funcs": ["選択した補助機能"],
-  "eval_memo": "生成された評価メモ文章",
+  "main_types": ["タイプ名1"],
+  "aux_funcs": ["補助機能1", "補助機能2"],
+  "eval_memo": "評価メモ本文...",
   "scores": {{
-    "論理的分析力": 75,
-    "直観・本質把握": 80,
-    "計画・規律性": 60,
-    "独立・内省力": 85,
-    "対人・柔軟性": 70
+    "logic": 70,
+    "intuition": 60,
+    "planning": 80,
+    "independence": 75,
+    "flexibility": 50
   }}
 }}
 """
-        response = model.generate_content(prompt)
-        res_text = response.text.strip()
+
+        # 接続可能なモデルを自動的に順次テストする候補リスト
+        candidate_models = [
+            "gemini-1.5-flash-latest",
+            "gemini-2.0-flash",
+            "gemini-1.5-flash",
+            "gemini-1.5-pro"
+        ]
+
+        res_text = None
+        last_error = None
+
+        for model_name in candidate_models:
+            try:
+                try:
+                    model = genai.GenerativeModel(
+                        model_name,
+                        generation_config={"response_mime_type": "application/json"}
+                    )
+                    response = model.generate_content(prompt)
+                except Exception:
+                    model = genai.GenerativeModel(model_name)
+                    response = model.generate_content(prompt)
+                
+                if response and response.text:
+                    res_text = response.text.strip()
+                    break
+            except Exception as err:
+                last_error = err
+                continue
+
+        if not res_text:
+            raise last_error if last_error else Exception("すべてのAIモデルで応答を取得できませんでした。")
 
         if "```json" in res_text:
             res_text = res_text.split("```json")[1].split("```")[0].strip()
