@@ -328,23 +328,19 @@ for sub in st.session_state.submissions:
     memo = str(sub.get('memo', ''))
     ws.append([sub_id, mains, auxs, memo])
 
-# 列幅の調整と折り返し設定
-for col in ws.columns:
-    max_length = 0
-    column_letter = col[0].column_letter
-    for cell in col:
-        # D列（メモ）は幅を固定して折り返し表示
-        if column_letter == 'D':
-            cell.alignment = Alignment(wrap_text=True, vertical="top")
-            ws.column_dimensions[column_letter].width = 50
-        else:
-            try:
-                if len(str(cell.value)) > max_length:
-                    max_length = len(str(cell.value))
-            except:
-                pass
-            ws.column_dimensions[column_letter].width = (max_length + 3)
+# 列幅の明示的設定（日本語が途切れないよう広めに確保）
+ws.column_dimensions['A'].width = 15  # 応募者ID
+ws.column_dimensions['B'].width = 15  # 主タイプ
+ws.column_dimensions['C'].width = 40  # 補助機能
+ws.column_dimensions['D'].width = 60  # 採用・評価メモ
 
+# データ行の配置設定（上揃え・メモ欄の折り返し）
+for row in ws.iter_rows(min_row=2):
+    for cell in row:
+        if cell.column_letter == 'D':
+            cell.alignment = Alignment(wrap_text=True, vertical="top")
+        else:
+            cell.alignment = Alignment(vertical="top")
 # Excelファイルをメモリ上に保存
 excel_buffer = io.BytesIO()
 wb.save(excel_buffer)
