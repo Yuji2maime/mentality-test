@@ -108,7 +108,7 @@ MAIN_TYPE_OPTIONS = ["Fe-Si", "Se-Ti", "Ne-Fi", "Ni-Te", "Si-Fe", "Ti-Ne", "Fi-N
 AUX_FUNC_OPTIONS = ["外向感情(Fe)", "内向感覚(Si)", "外向直観(Ne)", "内向思考(Ti)", "外向感覚(Se)", "内向感情(Fi)", "外向思考(Te)", "内向直観(Ni)"]
 
 def analyze_text_with_ai(text, key):
-    """応募者の文章をGemini APIで自動解析する関数（自動モデル選択機能付き）"""
+    """応募者の文章をGemini APIで自動解析する関数（APIから利用可能モデルを自動取得する完全版）"""
     if not key:
         return [], [], "※APIキー未設定のため自動解析スキップ。手動で入力してください。", {}
 
@@ -152,18 +152,33 @@ def analyze_text_with_ai(text, key):
 }}
 """
 
-        # 接続可能なモデルを自動的に順次テストする候補リスト
-        candidate_models = [
-            "gemini-1.5-flash-latest",
-            "gemini-2.0-flash",
-            "gemini-1.5-flash",
-            "gemini-1.5-pro"
-        ]
+        # 利用可能なモデル一覧をAPIから自動取得
+        available_models = []
+        try:
+            for m in genai.list_models():
+                if 'generateContent' in getattr(m, 'supported_generation_methods', []):
+                    available_models.append(m.name)
+        except Exception as e:
+            return [], [], f"APIキー認証エラー: {e}", {}
+
+        if not available_models:
+            available_models = ["models/gemini-1.5-flash", "models/gemini-2.0-flash", "models/gemini-1.5-pro"]
+
+        # 優先度の高い軽量・高速モデルを前方にソート
+        priority_keywords = ["2.0-flash", "1.5-flash", "flash", "1.5-pro"]
+        sorted_models = []
+        for kw in priority_keywords:
+            for m in available_models:
+                if kw in m and m not in sorted_models:
+                    sorted_models.append(m)
+        for m in available_models:
+            if m not in sorted_models:
+                sorted_models.append(m)
 
         res_text = None
         last_error = None
 
-        for model_name in candidate_models:
+        for model_name in sorted_models:
             try:
                 try:
                     model = genai.GenerativeModel(
@@ -183,7 +198,7 @@ def analyze_text_with_ai(text, key):
                 continue
 
         if not res_text:
-            raise last_error if last_error else Exception("すべてのAIモデルで応答を取得できませんでした。")
+            raise last_error if last_error else Exception("利用可能なGeminiモデルで応答が取得できませんでした。APIキーの権限・有効期限をご確認ください。")
 
         if "```json" in res_text:
             res_text = res_text.split("```json")[1].split("```")[0].strip()
