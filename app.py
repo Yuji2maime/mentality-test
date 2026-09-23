@@ -49,61 +49,64 @@ with st.sidebar:
         3. Edge: **「アプリ」** ＞ **「このサイトをアプリとしてインストール」**
         """)
 
-    # 2. 保存データの削除機能
-    st.subheader("🗑️ データ管理")
-    if st.button("保存された履歴データをすべて削除", use_container_width=True):
-        st.session_state.submissions = []
-        st.success("すべての履歴データを削除しました！")
-        st.rerun()
-# --- データ管理エリアへのCSVダウンロード機能追加 ---
-st.sidebar.markdown("---")
-st.sidebar.subheader("📥 データダウンロード")
+    # === 管理者(admin)画面の時のみ表示する機能 ===
+    if st.session_state.view_mode == "admin":
+        
+        # 2. 保存データの削除機能
+        st.sidebar.subheader("🗑️ データ管理")
+        if st.sidebar.button("保存された履歴データをすべて削除", use_container_width=True):
+            st.session_state.submissions = []
+            st.sidebar.success("すべての履歴データを削除しました！")
+            st.rerun()
 
-if "submissions" in st.session_state and st.session_state.submissions:
-        # データをPandasのDataFrameに変換
-        df = pd.DataFrame(st.session_state.submissions)
-
-        # すべての列のカッコ [ ] や引用符 ' ' を綺麗に外す処理
-        for col in df.columns:
-            df[col] = df[col].apply(lambda x: ', '.join(x) if isinstance(x, list) else x)
-            df[col] = df[col].apply(lambda x: str(x).replace("[", "").replace("]", "").replace("'", "") if isinstance(x, str) and str(x).startswith("[") else x)
-
-        # 綺麗にしたデータをCSVにエクスポート
-        csv_data = df.to_csv(index=False).encode("utf-8-sig")
-        st.sidebar.download_button(
-            label="📥 履歴をCSVでダウンロード",
-            data=csv_data,
-            file_name="cognitive_test_submissions.csv",
-            mime="text/csv",
-        )
-
-        # --- ここから追加：検索メニューと表の表示 ---
+        # --- データ管理エリアへのCSVダウンロード機能追加 ---
         st.sidebar.markdown("---")
-        st.sidebar.subheader("🔍 データの検索・絞り込み")
+        st.sidebar.subheader("📥 データダウンロード")
 
-        # サイドバー：キーワード検索
-        search_query = st.sidebar.text_input("キーワード検索 (名前やメモなど)")
+        if "submissions" in st.session_state and st.session_state.submissions:
+            # データをPandasのDataFrameに変換
+            df = pd.DataFrame(st.session_state.submissions)
 
-        # サイドバー：主タイプの絞り込み
-        type_options = ["Fe-Si", "Se-Ti", "Ne-Fi", "Ni-Te", "Si-Fe", "Ti-Ne", "Fi-Ne", "Te-Ni", "その他"]
-        selected_types = st.sidebar.multiselect("主タイプで絞り込み", type_options)
+            # すべての列のカッコ [ ] や引用符 ' ' を綺麗に外す処理
+            for col in df.columns:
+                df[col] = df[col].apply(lambda x: ', '.join(x) if isinstance(x, list) else x)
+                df[col] = df[col].apply(lambda x: str(x).replace("[", "").replace("]", "").replace("'", "") if isinstance(x, str) and str(x).startswith("[") else x)
 
-        # 絞り込みの実行
-        filtered_df = df.copy()
-        if search_query:
-            mask = filtered_df.astype(str).apply(lambda x: x.str.contains(search_query, case=False, na=False)).any(axis=1)
-            filtered_df = filtered_df[mask]
-        if selected_types:
-            if "主タイプ" in filtered_df.columns:
-                filtered_df = filtered_df[filtered_df["主タイプ"].isin(selected_types)]
+            # 綺麗にしたデータをCSVにエクスポート
+            csv_data = df.to_csv(index=False).encode("utf-8-sig")
+            st.sidebar.download_button(
+                label="📥 履歴をCSVでダウンロード",
+                data=csv_data,
+                file_name="cognitive_test_submissions.csv",
+                mime="text/csv",
+            )
 
-        # メイン画面：絞り込まれたデータを表として表示
-        if st.session_state.view_mode == "admin":
+            # --- 検索メニューと表の表示 ---
+            st.sidebar.markdown("---")
+            st.sidebar.subheader("🔍 データの検索・絞り込み")
+
+            # サイドバー：キーワード検索
+            search_query = st.sidebar.text_input("キーワード検索 (名前やメモなど)")
+
+            # サイドバー：主タイプの絞り込み
+            type_options = ["Fe-Si", "Se-Ti", "Ne-Fi", "Ni-Te", "Si-Fe", "Ti-Ne", "Fi-Ne", "Te-Ni", "その他"]
+            selected_types = st.sidebar.multiselect("主タイプで絞り込み", type_options)
+
+            # 絞り込みの実行
+            filtered_df = df.copy()
+            if search_query:
+                mask = filtered_df.astype(str).apply(lambda x: x.str.contains(search_query, case=False, na=False)).any(axis=1)
+                filtered_df = filtered_df[mask]
+            if selected_types:
+                if "主タイプ" in filtered_df.columns:
+                    filtered_df = filtered_df[filtered_df["主タイプ"].isin(selected_types)]
+
+            # メイン画面：絞り込まれたデータを表として表示
             st.write("### 📄 提出データ一覧")
             st.dataframe(filtered_df, use_container_width=True)
-else:
-    st.sidebar.info("ダウンロード可能なデータはありません。")
-    st.sidebar.markdown("---")
+        else:
+            st.sidebar.info("ダウンロード可能なデータはありません。")
+            st.sidebar.markdown("---")￥
 # 選択肢の定義
 MAIN_TYPE_OPTIONS = ["Fe-Si", "Se-Ti", "Ne-Fi", "Ni-Te", "Si-Fe", "Ti-Ne", "Fi-Ne", "Te-Ni", "その他"]
 AUX_FUNC_OPTIONS = ["外向感情(Fe)", "内向感覚(Si)", "外向直観(Ne)", "内向思考(Ti)", "外向感覚(Se)", "内向感情(Fi)", "外向思考(Te)", "内向直観(Ni)"]
