@@ -98,8 +98,8 @@ if "submissions" in st.session_state and st.session_state.submissions:
                 filtered_df = filtered_df[filtered_df["主タイプ"].isin(selected_types)]
             
     # メイン画面：絞り込まれたデータを表として表示
-    if st.session_state.view_mode == "admin":
-        st.write("### 📋 提出データ一覧")
+   if st.session_state.view_mode == "admin":
+        st.write("### 📄 提出データ一覧")
         st.dataframe(filtered_df, use_container_width=True)
     # === ▲ 追加ここまで ▲ ===
 else:
