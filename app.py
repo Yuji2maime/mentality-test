@@ -60,40 +60,42 @@ st.sidebar.markdown("---")
 st.sidebar.subheader("📥 データダウンロード")
 
 if "submissions" in st.session_state and st.session_state.submissions:
-    # データをPandasのDataFrameに変換
-    df = pd.DataFrame(st.session_state.submissions)
+        # データをPandasのDataFrameに変換
+        df = pd.DataFrame(st.session_state.submissions)
 
-    # すべての列のカッコ [ ] や引用符 ' ' を綺麗に外す処理
-    for col in df.columns:
-        df[col] = df[col].apply(lambda x: ', '.join(x) if isinstance(x, list) else x)
-        df[col] = df[col].apply(lambda x: str(x).replace("['", "").replace("']", "") if isinstance(x, str) and str(x).startswith("['") else x)
+        # すべての列のカッコ [ ] や引用符 ' ' を綺麗に外す処理
+        for col in df.columns:
+            df[col] = df[col].apply(lambda x: ', '.join(x) if isinstance(x, list) else x)
+            df[col] = df[col].apply(lambda x: str(x).replace("[", "").replace("]", "").replace("'", "") if isinstance(x, str) and str(x).startswith("[") else x)
 
-    # 綺麗にしたデータをCSVにエクスポート
-    csv_data = df.to_csv(index=False).encode("utf-8-sig")
-    st.sidebar.download_button(
-        label="📄 履歴をCSVでダウンロード",
-        data=csv_data,
-        file_name="cognitive_test_submissions.csv",
-        mime="text/csv",
-    )# === ▼ ここから追加：検索メニューと表の表示 ▼ ===
-    st.sidebar.markdown("---")
-    st.sidebar.subheader("🔍 データの検索・絞り込み")
-    
-    # サイドバー：キーワード検索
-    search_query = st.sidebar.text_input("キーワード検索 (名前やメモなど)")
-    
-    # サイドバー：主タイプの絞り込み
-    type_options = ["Fe-Si", "Se-Ti", "Ne-Fi", "Ni-Te", "Si-Fe", "Ti-Ne", "Fi-Ne", "Te-Ni", "その他"]
-    selected_types = st.sidebar.multiselect("主タイプで絞り込み", type_options)
-    
-    # 絞り込みの実行
-    filtered_df = df.copy()
-    if search_query:
-        mask = filtered_df.astype(str).apply(lambda x: x.str.contains(search_query, case=False, na=False)).any(axis=1)
-        filtered_df = filtered_df[mask]
-    if selected_types:
-        if "主タイプ" in filtered_df.columns:
-            filtered_df = filtered_df[filtered_df["主タイプ"].isin(selected_types)]
+        # 綺麗にしたデータをCSVにエクスポート
+        csv_data = df.to_csv(index=False).encode("utf-8-sig")
+        st.sidebar.download_button(
+            label="📥 履歴をCSVでダウンロード",
+            data=csv_data,
+            file_name="cognitive_test_submissions.csv",
+            mime="text/csv",
+        )
+
+        # --- ここから追加：検索メニューと表の表示 ---
+        st.sidebar.markdown("---")
+        st.sidebar.subheader("🔍 データの検索・絞り込み")
+
+        # サイドバー：キーワード検索
+        search_query = st.sidebar.text_input("キーワード検索 (名前やメモなど)")
+
+        # サイドバー：主タイプの絞り込み
+        type_options = ["Fe-Si", "Se-Ti", "Ne-Fi", "Ni-Te", "Si-Fe", "Ti-Ne", "Fi-Ne", "Te-Ni", "その他"]
+        selected_types = st.sidebar.multiselect("主タイプで絞り込み", type_options)
+
+        # 絞り込みの実行
+        filtered_df = df.copy()
+        if search_query:
+            mask = filtered_df.astype(str).apply(lambda x: x.str.contains(search_query, case=False, na=False)).any(axis=1)
+            filtered_df = filtered_df[mask]
+        if selected_types:
+            if "主タイプ" in filtered_df.columns:
+                filtered_df = filtered_df[filtered_df["主タイプ"].isin(selected_types)]
             
     # メイン画面：絞り込まれたデータを表として表示
     if st.session_state.view_mode == "admin":
