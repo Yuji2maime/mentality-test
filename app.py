@@ -101,7 +101,7 @@ if "submissions" in st.session_state and st.session_state.submissions:
         if st.session_state.view_mode == "admin":
             st.write("### 📄 提出データ一覧")
             st.dataframe(filtered_df, use_container_width=True)
-    else:
+else:
         st.sidebar.info("ダウンロード可能なデータはありません。")
     st.sidebar.markdown("---")
 # 選択肢の定義
