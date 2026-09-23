@@ -426,14 +426,15 @@ st.download_button(
 
 # === ここまで ===
 st.markdown("---")
-if st.button("🔄 次の人のテストを始める (画面リロード) "):
-    # 保存データ（submissions）だけを一時的に退避させる
+if st.button("🔄 次の人のテストを始める (画面リロード)"):
+    # 過去の全員分の提出データだけを一時退避
     saved_submissions = st.session_state.get("submissions", [])
     
-    # セッションのデータを完全にクリアする
+    # 入力中の氏名・テキスト・解析結果(レーダーチャート等)をすべて強制消去
     st.session_state.clear()
     
-    # 退避させておいた保存データだけを戻す
+    # 提出データだけを戻し、画面モードを応募者用に強制リセット
     st.session_state["submissions"] = saved_submissions
+    st.session_state["view_mode"] = "applicant"
     
     st.rerun()
