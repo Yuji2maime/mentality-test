@@ -102,7 +102,7 @@ if "submissions" in st.session_state and st.session_state.submissions:
             st.write("### 📄 提出データ一覧")
             st.dataframe(filtered_df, use_container_width=True)
 else:
-        st.sidebar.info("ダウンロード可能なデータはありません。")
+    st.sidebar.info("ダウンロード可能なデータはありません。")
     st.sidebar.markdown("---")
 # 選択肢の定義
 MAIN_TYPE_OPTIONS = ["Fe-Si", "Se-Ti", "Ne-Fi", "Ni-Te", "Si-Fe", "Ti-Ne", "Fi-Ne", "Te-Ni", "その他"]
