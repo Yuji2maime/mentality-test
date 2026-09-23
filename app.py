@@ -243,17 +243,25 @@ st.divider()
 if st.session_state.view_mode == "applicant":
     st.title("思考・表現力セッション")
     st.write("政治・経済、趣味、恋愛など、あなたが今最も関心のあることや語りたいテーマについて、制限時間内に自由に記述してください。納得した時点でいつでも終了できます。")
-    
+
+    # --- 氏名入力欄 ---
+    applicant_name = st.text_input("氏名をご記入ください", key="applicant_name")
+
     user_input = st.text_area("記述欄", height=200, key="applicant_text")
-    
-if st.button("これで完了する（終了）", type="primary"):
-        if user_input.strip():
+
+    if st.button("これで完了する（終了）", type="primary"):
+        if not applicant_name.strip():
+            st.error("氏名を入力してください。")
+        elif not user_input.strip():
+            st.warning("文章を入力してから送信してください。")
+        else:
             with st.spinner("AIが回答内容を事前解析中..."):
                 mains, auxs, memo, scores = analyze_text_with_ai(user_input, api_key)
 
             new_data = {
                 "id": len(st.session_state.submissions) + 1,
                 "timestamp": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                "name": applicant_name,
                 "text": user_input,
                 "selected_mains": mains,
                 "selected_auxs": auxs,
@@ -262,8 +270,6 @@ if st.button("これで完了する（終了）", type="primary"):
             }
             st.session_state.submissions.append(new_data)
             st.success("送信が完了しました。ご協力ありがとうございました。")
-        else:
-            st.warning("文章を入力してから送信してください。")
 # 2. 管理者画面
 else:
     st.title("採用管理画面")
