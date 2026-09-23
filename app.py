@@ -106,7 +106,7 @@ with st.sidebar:
             st.dataframe(filtered_df, use_container_width=True)
         else:
             st.sidebar.info("ダウンロード可能なデータはありません。")
-            st.sidebar.markdown("---")￥
+            st.sidebar.markdown("---")
 # 選択肢の定義
 MAIN_TYPE_OPTIONS = ["Fe-Si", "Se-Ti", "Ne-Fi", "Ni-Te", "Si-Fe", "Ti-Ne", "Fi-Ne", "Te-Ni", "その他"]
 AUX_FUNC_OPTIONS = ["外向感情(Fe)", "内向感覚(Si)", "外向直観(Ne)", "内向思考(Ti)", "外向感覚(Se)", "内向感情(Fi)", "外向思考(Te)", "内向直観(Ni)"]
