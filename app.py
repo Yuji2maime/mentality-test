@@ -420,9 +420,14 @@ st.download_button(
 
 # === ここまで ===
 st.markdown("---")
-if st.button("🔄 次の人のテストを始める（画面リセット）"):
-    # 保存済みのCSVデータ(submissions)以外をクリアする
-    for key in list(st.session_state.keys()):
-        if key != "submissions":
-            del st.session_state[key]
+if st.button("🔄 次の人のテストを始める (画面リロード) "):
+    # 保存データ（submissions）だけを一時的に退避させる
+    saved_submissions = st.session_state.get("submissions", [])
+    
+    # セッションのデータを完全にクリアする
+    st.session_state.clear()
+    
+    # 退避させておいた保存データだけを戻す
+    st.session_state["submissions"] = saved_submissions
+    
     st.rerun()
