@@ -274,11 +274,11 @@ if st.session_state.view_mode == "applicant":
 
             st.markdown("---")
             if st.button("🔄 次の人のテストを始める (画面リセット)"):
-        saved_submissions = st.session_state.get("submissions", [])
-        st.session_state.clear()
-        st.session_state["submissions"] = saved_submissions
-        st.session_state["view_mode"] = "applicant"
-        st.rerun()
+                saved_submissions = st.session_state.get("submissions", [])
+                st.session_state.clear()
+                st.session_state["submissions"] = saved_submissions
+                st.session_state["view_mode"] = "applicant"
+                st.rerun()
 
 # ==========================================
 # 2. 管理者画面
