@@ -125,7 +125,7 @@ def analyze_text_with_ai(text, key):
 【選択肢の定義】
 MAIN_TYPE_OPTIONS = {MAIN_TYPE_OPTIONS}
 AUX_FUNC_OPTIONS = {AUX_FUNC_OPTIONS}
-
+photo
 【分析指示】
 1. 主タイプ（該当するもの）：MAIN_TYPE_OPTIONSの中から1つ以上選んでください。
 2. 補助機能（複数認定）：AUX_FUNC_OPTIONSの中から選んでください。
@@ -270,8 +270,8 @@ st.write("本日はご参加いただきありがとうございます。この�
                 "scores": scores
             }
             st.session_state.submissions.append(new_data)
-            st.success("送信が完了しました。ご協力ありがとうございました。")
-            
+st.success("送信が完了いたしました。ご協力ありがとうございました！いただいた内容は、次回面接にてより良い対話をさせていただくための参考として活用いたします。本日の作業は以上で終了です。そのまま画面をお閉じください。")
+
     st.markdown("---")
     if st.button("🔄 次の人のテストを始める (画面リセット)"):
         saved_submissions = st.session_state.get("submissions", [])
