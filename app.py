@@ -272,7 +272,7 @@ if st.session_state.view_mode == "applicant":
             st.session_state.submissions.append(new_data)
 st.success("送信が完了いたしました。ご協力ありがとうございました！いただいた内容は、次回面接にてより良い対話をさせていただくための参考として活用いたします。本日の作業は以上で終了です。そのまま画面をお閉じください。")
 
-    st.markdown("---")
+st.markdown("---")
     if st.button("🔄 次の人のテストを始める (画面リセット)"):
         saved_submissions = st.session_state.get("submissions", [])
         st.session_state.clear()
