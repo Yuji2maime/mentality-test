@@ -8,6 +8,8 @@ import plotly.graph_objects as go
 import io
 from openpyxl import Workbook
 from openpyxl.styles import Font, PatternFill, Alignment
+import gspread
+from google.oauth2.service_account import Credentials
 
 st.set_page_config(page_title="AI統合型 認知特性テスト", layout="wide")
 
@@ -20,6 +22,26 @@ if "view_mode" not in st.session_state:
 # SecretsからAPIキーを自動読み込み
 api_key = st.secrets["GEMINI_API_KEY"]
 
+def save_to_google_sheet(data_row):
+    """Googleスプレッドシートにデータを1行追加する関数"""
+    try:
+        # Streamlit SecretsからGCPの認証情報を取得
+        creds_dict = json.loads(st.secrets["gcp_credentials"])
+        scopes = [
+            "https://www.googleapis.com/auth/spreadsheets",
+            "https://www.googleapis.com/auth/drive"
+        ]
+        credentials = Credentials.from_service_account_info(creds_dict, scopes=scopes)
+        client = gspread.authorize(credentials)
+        
+        # 対象のスプレッドシートを開いて1行追加
+        # ※"Mentality Test Application Data" の部分は、実際のファイル名に合わせて後で変更可能です
+        sheet = client.open("Mentality Test Application Data").sheet1
+        sheet.append_row(data_row)
+        return True
+    except Exception as e:
+        st.error(f"スプレッドシートへの保存時にエラーが発生しました: {e}")
+        return False
 # --- サイドバー機能：ホーム画面追加案内 & データ削除 ---
 with st.sidebar:
     with st.sidebar.expander("⚠️ ご利用にあたっての重要事項（免責・禁止事項）", expanded=False):
