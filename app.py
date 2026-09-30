@@ -14,20 +14,27 @@ from google.oauth2.service_account import Credentials
 st.set_page_config(page_title="AI統合型 認知特性テスト", layout="wide")
 def fetch_from_spreadsheet():
     """スプレッドシートから全データを読み込む関数"""
-    if st.secrets.get("gcp_service_account") is None:
+    # Secretsのキー名（gcp_credentials または gcp_service_account）を取得
+    creds_data = st.secrets.get("gcp_credentials") or st.secrets.get("gcp_service_account")
+    if creds_data is None:
         st.warning("Google Sheets APIの認証情報が設定されていません。")
         return []
 
-    try:
-        credentials_dict = dict(st.secrets["gcp_service_account"])
+    try:–
+        # 文字列（JSON）の場合は辞書に変換
+        if isinstance(creds_data, str):
+            credentials_dict = json.loads(creds_data)
+        else:
+            credentials_dict = dict(creds_data)
+
         credentials = Credentials.from_service_account_info(
             credentials_dict,
             scopes=["https://www.googleapis.com/auth/spreadsheets"]
         )
-        # SPREADSHEET_ID が未定義の場合は st.secrets や設定値から取得
-        spreadsheet_id = st.secrets.get("SPREADSHEET_ID", "")
         
-        # gspread のクライアントを作成してシートデータを取得
+        # スプレッドシートIDの取得
+        spreadsheet_id = globals().get("SPREADSHEET_ID") or st.secrets.get("SPREADSHEET_ID") or st.secrets.get("spreadsheet_id") or "1hkFRa9v6wbGqmT1RAKvm9FlhuFIRS-R9YAFLThPJRw0"
+        
         gc = gspread.authorize(credentials)
         sh = gc.open_by_key(spreadsheet_id)
         worksheet = sh.get_worksheet(0)
@@ -39,10 +46,8 @@ def fetch_from_spreadsheet():
             if not row:
                 continue
             
-            # データ長不足を防ぐ補正
             row_data = row + [''] * (8 - len(row)) 
             
-            import json
             try:
                 main_types = json.loads(row_data[4]) if row_data[4] else []
             except Exception:
