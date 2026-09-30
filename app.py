@@ -20,7 +20,7 @@ def fetch_from_spreadsheet():
         st.warning("Google Sheets APIの認証情報が設定されていません。")
         return []
 
-    try:–
+    try:
         # 文字列（JSON）の場合は辞書に変換
         if isinstance(creds_data, str):
             credentials_dict = json.loads(creds_data)
