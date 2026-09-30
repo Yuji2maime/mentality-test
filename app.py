@@ -11,17 +11,22 @@ from openpyxl.styles import Font, PatternFill, Alignment
 import gspread
 from google.oauth2.service_account import Credentials
 
+# =========================================================
+# 【最重要】ここに正しいスプレッドシートIDを直接設定します
+# （Secretsの設定ミスを防ぐため、プログラム側で直接指定し固定します）
+# =========================================================
+TARGET_SPREADSHEET_ID = "1hkFRa9v6wbGqmT1RAKvm9ElhuFiRS-R9YAFtThPJRW0"
+
 st.set_page_config(page_title="AI統合型 認知特性テスト", layout="wide")
+
 def fetch_from_spreadsheet():
     """スプレッドシートから全データを読み込む関数"""
-    # Secretsのキー名（gcp_credentials または gcp_service_account）を取得
     creds_data = st.secrets.get("gcp_credentials") or st.secrets.get("gcp_service_account")
     if creds_data is None:
         st.warning("Google Sheets APIの認証情報が設定されていません。")
         return []
 
     try:
-        # 文字列（JSON）の場合は辞書に変換
         if isinstance(creds_data, str):
             credentials_dict = json.loads(creds_data)
         else:
@@ -32,11 +37,10 @@ def fetch_from_spreadsheet():
             scopes=["https://www.googleapis.com/auth/spreadsheets"]
         )
         
-        # スプレッドシートIDの取得
-        spreadsheet_id = globals().get("SPREADSHEET_ID") or st.secrets.get("SPREADSHEET_ID") or st.secrets.get("spreadsheet_id") or "1hkFRa9v6wbGqmT1RAKvm9FlhuFIRS-R9YAFLThPJRw0"
-        
         gc = gspread.authorize(credentials)
-        sh = gc.open_by_key(spreadsheet_id)
+        
+        # 設定した固定IDを使って確実に読み込む
+        sh = gc.open_by_key(TARGET_SPREADSHEET_ID)
         worksheet = sh.get_worksheet(0)
         
         values = worksheet.get_all_values()
@@ -93,8 +97,12 @@ api_key = st.secrets["GEMINI_API_KEY"]
 def save_to_google_sheet(data_row):
     """Googleスプレッドシートにデータを1行追加する関数"""
     try:
-        # Streamlit SecretsからGCPの認証情報を取得
-        creds_dict = json.loads(st.secrets["gcp_credentials"])
+        creds_data = st.secrets.get("gcp_credentials") or st.secrets.get("gcp_service_account")
+        if isinstance(creds_data, str):
+            creds_dict = json.loads(creds_data)
+        else:
+            creds_dict = dict(creds_data)
+            
         scopes = [
             "https://www.googleapis.com/auth/spreadsheets",
             "https://www.googleapis.com/auth/drive"
@@ -102,14 +110,14 @@ def save_to_google_sheet(data_row):
         credentials = Credentials.from_service_account_info(creds_dict, scopes=scopes)
         client = gspread.authorize(credentials)
         
-        # 対象のスプレッドシートを開いて1行追加
-        # ※"Mentality Test Application Data" の部分は、実際のファイル名に合わせて後で変更可能です
-        sheet = client.open("Mentality Test Application Data").sheet1
+        # 【重要】ファイル名ではなく、確実にIDで開くように修正
+        sheet = client.open_by_key(TARGET_SPREADSHEET_ID).sheet1
         sheet.append_row(data_row)
         return True
     except Exception as e:
         st.error(f"スプレッドシートへの保存時にエラーが発生しました: {e}")
         return False
+
 # --- サイドバー機能：ホーム画面追加案内 & データ削除 ---
 with st.sidebar:
     with st.sidebar.expander("⚠️ ご利用にあたっての重要事項（免責・禁止事項）", expanded=False):
@@ -119,6 +127,7 @@ with st.sidebar:
 
 **【2. 免責事項（不可抗力と危険負担）】**
 予期せぬシステムエラーやバグ、通信障害、第三者による不正アクセス（ハッキング等）、および天災地変等の不可抗力（自然災害等）により本システムが停止・誤作動・情報漏洩した場合、それに伴う利用者のいかなる損害についても開発者は責任を負いかねます。
+
 **【3. 転売・譲渡の禁止と法的措置】**
 開発者の事前の同意なく、本ツールのプログラム、URL、出力結果のフォーマット等を複製、無断転売、譲渡、貸与することを固く禁じます。違反行為が発覚した場合、損害賠償等の民事上の措置に加え、直ちに**刑事告訴**等の厳格な法的措置を講じます。
         """)
@@ -215,7 +224,7 @@ def analyze_text_with_ai(text, key):
 【選択肢の定義】
 MAIN_TYPE_OPTIONS = {MAIN_TYPE_OPTIONS}
 AUX_FUNC_OPTIONS = {AUX_FUNC_OPTIONS}
-photo
+
 【分析指示】
 1. 主タイプ（該当するもの）：MAIN_TYPE_OPTIONSの中から1つ以上選んでください。
 2. 補助機能（複数認定）：AUX_FUNC_OPTIONSの中から選んでください。
@@ -361,7 +370,8 @@ if st.session_state.view_mode == "applicant":
             }
             st.session_state.submissions.append(new_data)
             st.success("送信が完了いたしました。ご協力ありがとうございました！いただいた内容は、次回面接にてより良い対話をさせていただくための参考として活用いたします。本日の作業は以上で終了です。そのまま画面をお閉じください。")
-# スプレッドシート用にデータをリスト化（JSON形式の辞書等は文字列に変換）
+            
+            # スプレッドシート用にデータをリスト化
             row_data = [
                 new_data["id"],
                 new_data["timestamp"],
@@ -399,10 +409,9 @@ else:
         st.info("まだ提出されたデータはありません。")
     else:
         for idx, sub in enumerate(st.session_state.submissions):
-            # expanderのタイトルに氏名を追加し、デフォルトで閉じておく（見やすくするため）
             with st.expander(f"提出データ #{sub['id']} : {sub.get('name', '名無し')}様 (日時: {sub['timestamp']})", expanded=False):
                 
-                if st.button("🗑️ このデータを削除", key=f"del_btn_{sub['id']}"):
+                if st.button("🗑️️ このデータを削除", key=f"del_btn_{sub['id']}"):
                     st.session_state.submissions.pop(idx)
                     st.rerun()
                 
@@ -452,7 +461,6 @@ else:
                     showlegend=False,
                     margin=dict(l=20, r=20, t=20, b=20)
                 )
-                # keyパラメータを追加してチャートごとの一意性を確保
                 st.plotly_chart(fig, use_container_width=True, key=f"chart_{sub['id']}")
 
         # --- 管理者画面の最下部にExcelダウンロードを配置 ---
@@ -463,7 +471,6 @@ else:
         ws = wb.active
         ws.title = "評価結果"
 
-        # ヘッダーに氏名と各スコアを追加
         headers = ["応募者ID", "氏名", "主タイプ", "補助機能", "採用・評価メモ", "論理的分析力", "直観・本質把握", "計画・規律性", "独立・内省力", "対人・柔軟性"]
         ws.append(headers)
 
