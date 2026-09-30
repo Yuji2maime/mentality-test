@@ -12,6 +12,69 @@ import gspread
 from google.oauth2.service_account import Credentials
 
 st.set_page_config(page_title="AI統合型 認知特性テスト", layout="wide")
+def fetch_from_spreadsheet():
+    """スプレッドシートから全データを読み込む関数"""
+    if st.secrets.get("gcp_service_account") is None:
+        st.warning("Google Sheets APIの認証情報が設定されていません。")
+        return []
+
+    try:
+        credentials_dict = dict(st.secrets["gcp_service_account"])
+        credentials = Credentials.from_service_account_info(
+            credentials_dict,
+            scopes=["https://www.googleapis.com/auth/spreadsheets"]
+        )
+        # SPREADSHEET_ID が未定義の場合は st.secrets や設定値から取得
+        spreadsheet_id = st.secrets.get("SPREADSHEET_ID", "")
+        
+        # gspread のクライアントを作成してシートデータを取得
+        gc = gspread.authorize(credentials)
+        sh = gc.open_by_key(spreadsheet_id)
+        worksheet = sh.get_worksheet(0)
+        
+        values = worksheet.get_all_values()
+        
+        fetched_results = []
+        for row in values:
+            if not row:
+                continue
+            
+            # データ長不足を防ぐ補正
+            row_data = row + [''] * (8 - len(row)) 
+            
+            import json
+            try:
+                main_types = json.loads(row_data[4]) if row_data[4] else []
+            except Exception:
+                main_types = [row_data[4]] if row_data[4] else []
+                
+            try:
+                sub_funcs = json.loads(row_data[5]) if row_data[5] else []
+            except Exception:
+                sub_funcs = [row_data[5]] if row_data[5] else []
+                
+            try:
+                scores = json.loads(row_data[7]) if row_data[7] else {}
+            except Exception:
+                scores = {}
+
+            fetched_results.append({
+                "id": row_data[0],
+                "timestamp": row_data[1],
+                "name": row_data[2] if row_data[2] else "匿名希望",
+                "text": row_data[3],
+                "analysis": {
+                    "main_types": main_types,
+                    "sub_functions": sub_funcs,
+                    "memo": row_data[6],
+                    "scores": scores
+                }
+            })
+        return fetched_results
+
+    except Exception as e:
+        st.error(f"スプレッドシートからの読み込みに失敗しました: {e}")
+        return []
 
 # セッション状態の初期化
 if "submissions" not in st.session_state:
@@ -322,6 +385,10 @@ if st.session_state.view_mode == "applicant":
 else:
     st.title("採用管理画面")
     st.warning("※本解析結果は思考傾向の示唆に留まる補助情報であり、適正な採用・配属を保証するものではありません。最終的な採用・配属決定は面接や総合評価に基づき、担当者ご自身の責任で行ってください。")
+    # スプレッドシートから最新データを読み込んで同期
+    fetched_data = fetch_from_spreadsheet()
+    if fetched_data:
+        st.session_state.submissions = fetched_data
     
     if not st.session_state.submissions:
         st.info("まだ提出されたデータはありません。")
