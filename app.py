@@ -421,11 +421,11 @@ else:
                 st.subheader("【AI拡張解析・ラベリングエリア】")
                 col1, col2 = st.columns(2)
                 with col1:
-                    selected_mains = st.multiselect("主タイプ", MAIN_TYPE_OPTIONS, default=sub["selected_mains"], key=f"main_{sub['id']}")
-                with col2:
-                    selected_auxs = st.multiselect("補助機能", AUX_FUNC_OPTIONS, default=sub["selected_auxs"], key=f"aux_{sub['id']}")
-                
-                memo = st.text_area("採用・評価メモ（認知の癖、リスク、矛盾点など）", value=sub["memo"], height=120, key=f"memo_{sub['id']}")
+                    selected_mains = st.multiselect("主タイプ", MAIN_TYPE_OPTIONS, default=sub.get("selected_mains", []), key=f"main_{sub['id']}")
+        with col2:
+            selected_auxs = st.multiselect("補助機能", AUX_FUNC_OPTIONS, default=sub.get("selected_auxs", []), key=f"aux_{sub['id']}")
+
+        memo = st.text_area("採用・評価メモ（認知の癖、リスク、矛盾点など）", value=sub.get("memo", ""), height=120, key=f"memo_{sub['id']}")
                 
                 if st.button("💾 評価を保存する", key=f'save_{sub["id"]}', type="primary"):
                     st.balloons()
