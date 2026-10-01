@@ -427,12 +427,12 @@ else:
 
         memo = st.text_area("採用・評価メモ（認知の癖、リスク、矛盾点など）", value=sub.get("memo", ""), height=120, key=f"memo_{sub['id']}")
                 
-                if st.button("💾 評価を保存する", key=f'save_{sub["id"]}', type="primary"):
-                    st.balloons()
-                    st.session_state.submissions[idx]["selected_mains"] = selected_mains
-                    st.session_state.submissions[idx]["selected_auxs"] = selected_auxs
-                    st.session_state.submissions[idx]["memo"] = memo
-                    st.success(f"🎉 提出データ #{sub['id']} の評価を保存・更新しました！") 
+if st.button("💾 評価を保存する", key=f'save_{sub["id"]}', type="primary"):
+            st.balloons()
+            st.session_state.submissions[idx]["selected_mains"] = selected_mains
+            st.session_state.submissions[idx]["selected_auxs"] = selected_auxs
+            st.session_state.submissions[idx]["memo"] = memo
+            st.success(f"🎉 提出データ #{sub['id']} の評価を保存・更新しました！")
                 
                 # --- レーダーチャートを各個人のデータ内に表示 ---
                 st.markdown("---")
