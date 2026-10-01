@@ -15,7 +15,7 @@ from google.oauth2.service_account import Credentials
 # 【最重要】ここに正しいスプレッドシートIDを直接設定します
 # （Secretsの設定ミスを防ぐため、プログラム側で直接指定し固定します）
 # =========================================================
-TARGET_SPREADSHEET_ID = "1hkFRa9v6wbGqmT1RAKvm9ElhuFiRS-R9YAFtThPJRW0"
+TARGET_SPREADSHEET_ID = "1hkFRa9v6wbGqmT1RAKvm9EJhuEIRS-R9YAELThPJRW0"
 
 st.set_page_config(page_title="AI統合型 認知特性テスト", layout="wide")
 
