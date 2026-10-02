@@ -427,41 +427,41 @@ else:
 
         memo = st.text_area("採用・評価メモ（認知の癖、リスク、矛盾点など）", value=sub.get("memo", ""), height=120, key=f"memo_{sub['id']}")
                 
-if st.button("💾 評価を保存する", key=f'save_{sub["id"]}', type="primary"):
-            st.balloons()
-            st.session_state.submissions[idx]["selected_mains"] = selected_mains
-            st.session_state.submissions[idx]["selected_auxs"] = selected_auxs
-            st.session_state.submissions[idx]["memo"] = memo
-            st.success(f"🎉 提出データ #{sub['id']} の評価を保存・更新しました！")
+        if st.button("💾 評価を保存する", key=f'save_{sub["id"]}', type="primary"):
+                st.balloons()
+                st.session_state.submissions[idx]["selected_mains"] = selected_mains
+                st.session_state.submissions[idx]["selected_auxs"] = selected_auxs
+                st.session_state.submissions[idx]["memo"] = memo
+                st.success(f"🎉 提出データ #{sub['id']} の評価を保存・更新しました！")
                 
-            # --- レーダーチャートを各個人のデータ内に表示 ---
-            st.markdown("---")
-            st.subheader("📊 認知特性・傾向分析")
-            categories = ['論理的分析力', '直観・本質把握', '計画・規律性', '独立・内省力', '対人・柔軟性']
-            ai_scores = sub.get('scores', {})
-            scores_list = [
-                ai_scores.get('logic', 50),
-                ai_scores.get('intuition', 50),
-                ai_scores.get('planning', 50),
-                ai_scores.get('independence', 50),
-                ai_scores.get('flexibility', 50)
-            ]
-            
-            fig = go.Figure()
-            fig.add_trace(go.Scatterpolar(
-                r=scores_list + [scores_list[0]], 
-                theta=categories + [categories[0]],
-                fill='toself',
-                fillcolor='rgba(0, 123, 255, 0.3)',
-                line=dict(color='rgba(0, 123, 255, 1.0)', width=2),
-                name='特性スコア'
-            ))
-            fig.update_layout(
-                polar=dict(radialaxis=dict(visible=True, range=[0, 100])),
-                showlegend=False,
-                margin=dict(l=20, r=20, t=20, b=20)
-            )
-            st.plotly_chart(fig, use_container_width=True, key=f"chart_{sub['id']}")
+        # --- レーダーチャートを各個人のデータ内に表示 ---
+        st.markdown("---")
+        st.subheader("📊 認知特性・傾向分析")
+        categories = ['論理的分析力', '直観・本質把握', '計画・規律性', '独立・内省力', '対人・柔軟性']
+        ai_scores = sub.get('scores', {})
+        scores_list = [
+            ai_scores.get('logic', 50),
+            ai_scores.get('intuition', 50),
+            ai_scores.get('planning', 50),
+            ai_scores.get('independence', 50),
+            ai_scores.get('flexibility', 50)
+        ]
+        
+        fig = go.Figure()
+        fig.add_trace(go.Scatterpolar(
+            r=scores_list + [scores_list[0]], 
+            theta=categories + [categories[0]],
+            fill='toself',
+            fillcolor='rgba(0, 123, 255, 0.3)',
+            line=dict(color='rgba(0, 123, 255, 1.0)', width=2),
+            name='特性スコア'
+        ))
+        fig.update_layout(
+            polar=dict(radialaxis=dict(visible=True, range=[0, 100])),
+            showlegend=False,
+            margin=dict(l=20, r=20, t=20, b=20)
+        )
+        st.plotly_chart(fig, use_container_width=True, key=f"chart_{sub['id']}")
 
     # --- 管理者画面の最下部にExcelダウンロードを配置 ---
 st.markdown("---")
