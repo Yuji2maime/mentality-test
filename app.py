@@ -509,15 +509,15 @@ ws.column_dimensions['B'].width = 15
 ws.column_dimensions['C'].width = 15
 ws.column_dimensions['D'].width = 30
 ws.column_dimensions['E'].width = 60
-    for col_letter in ['F', 'G', 'H', 'I', 'J']:
-        ws.column_dimensions[col_letter].width = 15
+for col_letter in ['F', 'G', 'H', 'I', 'J']:
+    ws.column_dimensions[col_letter].width = 15
 
-    for row in ws.iter_rows(min_row=2):
-        for cell in row:
-            if cell.column_letter == 'E':
-                cell.alignment = Alignment(wrap_text=True, vertical="top")
-            else:
-                cell.alignment = Alignment(vertical="top")
+for row in ws.iter_rows(min_row=2):
+    for cell in row:
+        if cell.column_letter == 'E':
+            cell.alignment = Alignment(wrap_text=True, vertical="top")
+        else:
+            cell.alignment = Alignment(vertical="top")
 
     excel_buffer = io.BytesIO()
     wb.save(excel_buffer)
