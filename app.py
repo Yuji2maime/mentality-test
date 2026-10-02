@@ -434,75 +434,75 @@ if st.button("💾 評価を保存する", key=f'save_{sub["id"]}', type="primar
             st.session_state.submissions[idx]["memo"] = memo
             st.success(f"🎉 提出データ #{sub['id']} の評価を保存・更新しました！")
                 
-                # --- レーダーチャートを各個人のデータ内に表示 ---
-                st.markdown("---")
-                st.subheader("📊 認知特性・傾向分析")
-                categories = ['論理的分析力', '直観・本質把握', '計画・規律性', '独立・内省力', '対人・柔軟性']
-                ai_scores = sub.get('scores', {})
-                scores_list = [
-                    ai_scores.get('logic', 50),
-                    ai_scores.get('intuition', 50),
-                    ai_scores.get('planning', 50),
-                    ai_scores.get('independence', 50),
-                    ai_scores.get('flexibility', 50)
-                ]
-                
-                fig = go.Figure()
-                fig.add_trace(go.Scatterpolar(
-                    r=scores_list + [scores_list[0]], 
-                    theta=categories + [categories[0]],
-                    fill='toself',
-                    fillcolor='rgba(0, 123, 255, 0.3)',
-                    line=dict(color='rgba(0, 123, 255, 1.0)', width=2),
-                    name='特性スコア'
-                ))
-                fig.update_layout(
-                    polar=dict(radialaxis=dict(visible=True, range=[0, 100])),
-                    showlegend=False,
-                    margin=dict(l=20, r=20, t=20, b=20)
-                )
-                st.plotly_chart(fig, use_container_width=True, key=f"chart_{sub['id']}")
-
-        # --- 管理者画面の最下部にExcelダウンロードを配置 ---
-        st.markdown("---")
-        st.subheader("💾 データのダウンロード")
-
-        wb = Workbook()
-        ws = wb.active
-        ws.title = "評価結果"
-
-        headers = ["応募者ID", "氏名", "主タイプ", "補助機能", "採用・評価メモ", "論理的分析力", "直観・本質把握", "計画・規律性", "独立・内省力", "対人・柔軟性"]
-        ws.append(headers)
-
-        header_fill = PatternFill(start_color="4F81BD", end_color="4F81BD", fill_type="solid")
-        header_font = Font(color="FFFFFF", bold=True)
-        for col_num, cell in enumerate(ws[1], 1):
-            cell.fill = header_fill
-            cell.font = header_font
-            cell.alignment = Alignment(horizontal="center", vertical="center")
-
-        for sub in st.session_state.submissions:
-            sub_id = str(sub.get('id', ''))
-            name = sub.get('name', '未入力')
-            mains = "、".join(sub.get('selected_mains', []))
-            auxs = "、".join(sub.get('selected_auxs', []))
-            memo = str(sub.get('memo', ''))
-            sc = sub.get('scores', {})
-            
-            row_data = [
-                sub_id, 
-                name,
-                mains, 
-                auxs, 
-                memo,
-                sc.get('logic', ''),
-                sc.get('intuition', ''),
-                sc.get('planning', ''),
-                sc.get('independence', ''),
-                sc.get('flexibility', '')
+            # --- レーダーチャートを各個人のデータ内に表示 ---
+            st.markdown("---")
+            st.subheader("📊 認知特性・傾向分析")
+            categories = ['論理的分析力', '直観・本質把握', '計画・規律性', '独立・内省力', '対人・柔軟性']
+            ai_scores = sub.get('scores', {})
+            scores_list = [
+                ai_scores.get('logic', 50),
+                ai_scores.get('intuition', 50),
+                ai_scores.get('planning', 50),
+                ai_scores.get('independence', 50),
+                ai_scores.get('flexibility', 50)
             ]
-            ws.append(row_data)
+            
+            fig = go.Figure()
+            fig.add_trace(go.Scatterpolar(
+                r=scores_list + [scores_list[0]], 
+                theta=categories + [categories[0]],
+                fill='toself',
+                fillcolor='rgba(0, 123, 255, 0.3)',
+                line=dict(color='rgba(0, 123, 255, 1.0)', width=2),
+                name='特性スコア'
+            ))
+            fig.update_layout(
+                polar=dict(radialaxis=dict(visible=True, range=[0, 100])),
+                showlegend=False,
+                margin=dict(l=20, r=20, t=20, b=20)
+            )
+            st.plotly_chart(fig, use_container_width=True, key=f"chart_{sub['id']}")
 
+    # --- 管理者画面の最下部にExcelダウンロードを配置 ---
+    st.markdown("---")
+    st.subheader("💾 データのダウンロード")
+    
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "評価結果"
+    
+    headers = ["応募者ID", "氏名", "主タイプ", "補助機能", "採用・評価メモ", "論理的分析力", "直観・本質把握", "計画・規律性", "独立・内省力", "対人・柔軟性"]
+    ws.append(headers)
+    
+    header_fill = PatternFill(start_color="4F81BD", end_color="4F81BD", fill_type="solid")
+    header_font = Font(color="FFFFFF", bold=True)
+    for col_num, cell in enumerate(ws[1], 1):
+        cell.fill = header_fill
+        cell.font = header_font
+        cell.alignment = Alignment(horizontal="center", vertical="center")
+    
+    for sub in st.session_state.submissions:
+        sub_id = str(sub.get('id', ''))
+        name = sub.get('name', '未入力')
+        mains = "、".join(sub.get('selected_mains', []))
+        auxs = "、".join(sub.get('selected_auxs', []))
+        memo = str(sub.get('memo', ''))
+        sc = sub.get('scores', {})
+        
+        row_data = [
+            sub_id, 
+            name,
+            mains, 
+            auxs, 
+            memo,
+            sc.get('logic', ''),
+            sc.get('intuition', ''),
+            sc.get('planning', ''),
+            sc.get('independence', ''),
+            sc.get('flexibility', '')
+        ]
+        ws.append(row_data)
+    
         # 列幅の調整
         ws.column_dimensions['A'].width = 12
         ws.column_dimensions['B'].width = 15
@@ -511,18 +511,18 @@ if st.button("💾 評価を保存する", key=f'save_{sub["id"]}', type="primar
         ws.column_dimensions['E'].width = 60
         for col_letter in ['F', 'G', 'H', 'I', 'J']:
             ws.column_dimensions[col_letter].width = 15
-
+    
         for row in ws.iter_rows(min_row=2):
             for cell in row:
                 if cell.column_letter == 'E':
                     cell.alignment = Alignment(wrap_text=True, vertical="top")
                 else:
                     cell.alignment = Alignment(vertical="top")
-
+    
         excel_buffer = io.BytesIO()
         wb.save(excel_buffer)
         excel_data = excel_buffer.getvalue()
-
+    
         st.download_button(
             label="📥 全員の評価結果をExcelで一括ダウンロード",
             data=excel_data,
