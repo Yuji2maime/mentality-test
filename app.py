@@ -417,16 +417,21 @@ else:
                 
                 st.subheader("【応募者の記述内容】")
                 st.write(sub["text"])
-                st.write(sub)
                 
                 st.subheader("【AI拡張解析・ラベリングエリア】")
+                # --- AIのデータと手動保存のデータを連携させる ---
+                ai_data = sub.get("analysis", {})
+                def_mains = sub.get("selected_mains", ai_data.get("main_types", []))
+                def_auxs = sub.get("selected_auxs", ai_data.get("sub_functions", []))
+                def_memo = sub.get("memo", ai_data.get("memo", ""))
+
                 col1, col2 = st.columns(2)
                 with col1:
-                    selected_mains = st.multiselect("主タイプ", MAIN_TYPE_OPTIONS, default=sub.get("selected_mains", []), key=f"main_{sub['id']}")
-        with col2:
-            selected_auxs = st.multiselect("補助機能", AUX_FUNC_OPTIONS, default=sub.get("selected_auxs", []), key=f"aux_{sub['id']}")
+                    selected_mains = st.multiselect("主タイプ", MAIN_TYPE_OPTIONS, default=def_mains, key=f"main_{sub['id']}")
+                with col2:
+                    selected_auxs = st.multiselect("補助機能", AUX_FUNC_OPTIONS, default=def_auxs, key=f"aux_{sub['id']}")
 
-        memo = st.text_area("採用・評価メモ（認知の癖、リスク、矛盾点など）", value=sub.get("memo", ""), height=120, key=f"memo_{sub['id']}")
+                memo = st.text_area("採用・評価メモ（認知の癖、リスク、矛盾点など）", value=def_memo, height=170, key=f"memo_{sub['id']}")
                 
         if st.button("💾 評価を保存する", key=f'save_{sub["id"]}', type="primary"):
                 st.balloons()
