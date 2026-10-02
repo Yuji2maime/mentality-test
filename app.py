@@ -444,7 +444,7 @@ else:
         st.markdown("---")
         st.subheader("📊 認知特性・傾向分析")
         categories = ['論理的分析力', '直観・本質把握', '計画・規律性', '独立・内省力', '対人・柔軟性']
-        ai_scores = sub.get('scores', {})
+        ai_scores = sub.get('ai_scores', {})
         scores_list = [
             ai_scores.get('logic', 50),
             ai_scores.get('intuition', 50),
