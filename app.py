@@ -533,6 +533,6 @@ for row in ws.iter_rows(min_row=2):
         label="📥 全員の評価結果をExcelで一括ダウンロード",
         data=excel_data,
         file_name="evaluation_results_complete.xlsx",
-        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         key="download_excel_main_button"
     )
