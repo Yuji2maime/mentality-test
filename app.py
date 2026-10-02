@@ -443,6 +443,7 @@ else:
         # --- レーダーチャートを各個人のデータ内に表示 ---
         st.markdown("---")
         st.subheader("📊 認知特性・傾向分析")
+        st.write("🔍【原因特定用】データの中身:", sub)
         categories = ['論理的分析力', '直観・本質把握', '計画・規律性', '独立・内省力', '対人・柔軟性']
         ai_scores = sub.get('ai_scores') or sub.get('scores', {})
         scores_list = [
@@ -534,5 +535,5 @@ for row in ws.iter_rows(min_row=2):
         data=excel_data,
         file_name="evaluation_results_complete.xlsx",
         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        key=f"download_excel_{sub['id']}"
+        key=f"download_excel_{idx}"
     )
