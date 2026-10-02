@@ -504,11 +504,11 @@ for sub in st.session_state.submissions:
         ws.append(row_data)
 
     # 列幅の調整
-    ws.column_dimensions['A'].width = 12
-    ws.column_dimensions['B'].width = 15
-    ws.column_dimensions['C'].width = 15
-    ws.column_dimensions['D'].width = 30
-    ws.column_dimensions['E'].width = 60
+ws.column_dimensions['A'].width = 12
+ws.column_dimensions['B'].width = 15
+ws.column_dimensions['C'].width = 15
+ws.column_dimensions['D'].width = 30
+ws.column_dimensions['E'].width = 60
     for col_letter in ['F', 'G', 'H', 'I', 'J']:
         ws.column_dimensions[col_letter].width = 15
 
