@@ -534,4 +534,5 @@ for row in ws.iter_rows(min_row=2):
         data=excel_data,
         file_name="evaluation_results_complete.xlsx",
         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        key="download_excel_main_button"
     )
