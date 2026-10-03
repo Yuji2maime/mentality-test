@@ -422,7 +422,8 @@ else:
         for idx, sub in enumerate(st.session_state.submissions):
             with st.expander(f"提出データ #{sub['id']} : {sub.get('name', '名無し')}様 (日時: {sub['timestamp']})", expanded=False):
                 
-                if st.button("🗑️️ このデータを削除", key=f"del_btn_{sub['id']}"):
+                # === 新しいコード（これに書き換えます） ===
+                    if st.button("🗑️ このデータを削除", key=f"del_btn_{idx}_{sub.get('id', '')}"):
                     st.session_state.submissions.pop(idx)
                     st.rerun()
                 
