@@ -174,10 +174,21 @@ with st.sidebar:
                 df[col] = df[col].apply(lambda x: ', '.join(x) if isinstance(x, list) else x)
                 df[col] = df[col].apply(lambda x: str(x).replace("[", "").replace("]", "").replace("'", "") if isinstance(x, str) and str(x).startswith("[") else x)
 
-            csv_data = df.to_csv(index=False).encode("utf-8-sig")
+            export_df = pd.DataFrame()
+            export_df['応募者ID'] = df['id']
+            export_df['氏名'] = df['name']
+            export_df['提出日時'] = df['timestamp']
+            export_df['記述内容'] = df['text']
+            export_df['主タイプ'] = df['selected_main_type']
+            export_df['補助機能'] = df['selected_auxiliary_functions']
+            export_df['採用・評価メモ'] = df['memo']
+            
+            csv_data = "\ufeff" + export_df.to_csv(index=False)
+            csv_bytes = csv_data.encode('utf-8')
+            
             st.sidebar.download_button(
                 label="📥 履歴をCSVでダウンロード",
-                data=csv_data,
+                data=csv_bytes,
                 file_name="cognitive_test_submissions.csv",
                 mime="text/csv",
             )
