@@ -492,10 +492,11 @@ for col_num, cell in enumerate(ws[1], 1):
 for sub in st.session_state.submissions:
         sub_id = str(sub.get('id', ''))
         name = sub.get('name', '未入力')
-        mains = "、".join(sub.get('selected_mains', []))
-        auxs = "、".join(sub.get('selected_auxs', []))
-        memo = str(sub.get('memo', ''))
-        sc = sub.get('scores', {})
+        analysis = sub.get('analysis', {})
+        mains = ", ".join(analysis.get('main_types', []))
+        auxs = ", ".join(analysis.get('sub_functions', []))
+        memo = str(analysis.get('memo', ''))
+        sc = analysis.get('scores', {})
         
         row_data = [
             sub_id, 
@@ -536,5 +537,5 @@ for row in ws.iter_rows(min_row=2):
         data=excel_data,
         file_name="evaluation_results_complete.xlsx",
         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        key=f"download_excel_{idx}"
+        key="export_all_results_excel_button"
     )
