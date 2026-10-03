@@ -429,8 +429,7 @@ else:
                     showlegend=False,
                     margin=dict(l=20, r=20, t=20, b=20)
                 )
-                st.plotly_chart(fig, use_container_width=True, key=f"chart_{sub['id']}")
-
+                st.plotly_chart(fig, use_container_width=True, key=f"chart_{idx}")
     # --- 管理者画面の最下部にExcelダウンロードを配置 ---
 st.markdown("---")
 st.subheader("💾 データのダウンロード")
