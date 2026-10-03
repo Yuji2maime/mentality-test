@@ -163,58 +163,6 @@ with st.sidebar:
             st.sidebar.success("すべての履歴データを削除しました！")
             st.rerun()
 
-        # --- データ管理エリアへのCSVダウンロード機能追加 ---
-        st.sidebar.markdown("---")
-        st.sidebar.subheader("📥 データダウンロード")
-
-        if "submissions" in st.session_state and st.session_state.submissions:
-            df = pd.DataFrame(st.session_state.submissions)
-
-            for col in df.columns:
-                df[col] = df[col].apply(lambda x: ', '.join(x) if isinstance(x, list) else x)
-                df[col] = df[col].apply(lambda x: str(x).replace("[", "").replace("]", "").replace("'", "") if isinstance(x, str) and str(x).startswith("[") else x)
-
-            export_df = pd.DataFrame()
-            export_df['応募者ID'] = df['id']
-            export_df['氏名'] = df['name']
-            export_df['提出日時'] = df['timestamp']
-            export_df['記述内容'] = df['text']
-            export_df['主タイプ'] = df['selected_main_type']
-            export_df['補助機能'] = df['selected_auxiliary_functions']
-            export_df['採用・評価メモ'] = df['memo']
-            
-            csv_data = "\ufeff" + export_df.to_csv(index=False)
-            csv_bytes = csv_data.encode('utf-8')
-            
-            st.sidebar.download_button(
-                label="📥 履歴をCSVでダウンロード",
-                data=csv_bytes,
-                file_name="cognitive_test_submissions.csv",
-                mime="text/csv",
-            )
-
-            # --- 検索メニューと表の表示 ---
-            st.sidebar.markdown("---")
-            st.sidebar.subheader("🔍 データの検索・絞り込み")
-
-            search_query = st.sidebar.text_input("キーワード検索 (名前やメモなど)")
-            type_options = ["Fe-Si", "Se-Ti", "Ne-Fi", "Ni-Te", "Si-Fe", "Ti-Ne", "Fi-Ne", "Te-Ni", "その他"]
-            selected_types = st.sidebar.multiselect("主タイプで絞り込み", type_options)
-
-            filtered_df = df.copy()
-            if search_query:
-                mask = filtered_df.astype(str).apply(lambda x: x.str.contains(search_query, case=False, na=False)).any(axis=1)
-                filtered_df = filtered_df[mask]
-            if selected_types:
-                if "主タイプ" in filtered_df.columns:
-                    filtered_df = filtered_df[filtered_df["主タイプ"].isin(selected_types)]
-
-            st.write("### 📄 提出データ一覧")
-            st.dataframe(filtered_df, use_container_width=True)
-        else:
-            st.sidebar.info("ダウンロード可能なデータはありません。")
-            st.sidebar.markdown("---")
-
 # 選択肢の定義
 MAIN_TYPE_OPTIONS = ["Fe-Si", "Se-Ti", "Ne-Fi", "Ni-Te", "Si-Fe", "Ti-Ne", "Fi-Ne", "Te-Ni", "その他"]
 AUX_FUNC_OPTIONS = ["外向感情(Fe)", "内向感覚(Si)", "外向直観(Ne)", "内向思考(Ti)", "外向感覚(Se)", "内向感情(Fi)", "外向思考(Te)", "内向直観(Ni)"]
