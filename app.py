@@ -424,8 +424,8 @@ else:
                 
                 # === 新しいコード（これに書き換えます） ===
                     if st.button("🗑️ このデータを削除", key=f"del_btn_{idx}_{sub.get('id', '')}"):
-                    st.session_state.submissions.pop(idx)
-                    st.rerun()
+                        st.session_state.submissions.pop(idx)
+                        st.rerun()
                 
                 st.subheader("【応募者の記述内容】")
                 st.write(sub["text"])
