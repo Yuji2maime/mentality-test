@@ -512,7 +512,7 @@ for sub in st.session_state.submissions:
         ]
         ws.append(row_data)
 
-    # 列幅の調整
+# 列幅の調整
 ws.column_dimensions['A'].width = 12
 ws.column_dimensions['B'].width = 15
 ws.column_dimensions['C'].width = 15
@@ -528,14 +528,14 @@ for row in ws.iter_rows(min_row=2):
         else:
             cell.alignment = Alignment(vertical="top")
 
-    excel_buffer = io.BytesIO()
-    wb.save(excel_buffer)
-    excel_data = excel_buffer.getvalue()
+excel_buffer = io.BytesIO()
+wb.save(excel_buffer)
+excel_data = excel_buffer.getvalue()
 
-    st.download_button(
-        label="📥 全員の評価結果をExcelで一括ダウンロード",
-        data=excel_data,
-        file_name="evaluation_results_complete.xlsx",
-        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        key="export_all_results_excel_button"
-    )
+st.download_button(
+    label="📥 全員の評価結果をExcelで一括ダウンロード",
+    data=excel_data,
+    file_name="evaluation_results_complete.xlsx",
+    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    key="export_all_results_excel_button"
+)
