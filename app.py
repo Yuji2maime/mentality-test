@@ -160,6 +160,7 @@ with st.sidebar:
         st.sidebar.subheader("🗑️ データ管理")
         if st.sidebar.button("保存された履歴データをすべて削除", use_container_width=True):
             st.session_state.submissions = []
+            st.cache_data.clear()
             st.sidebar.success("すべての履歴データを削除しました！")
             st.rerun()
 
