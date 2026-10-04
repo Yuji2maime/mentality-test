@@ -498,3 +498,4 @@ st.download_button(
     mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
     key="export_all_results_excel_button"
 )
+# 強制リセット用の更新
