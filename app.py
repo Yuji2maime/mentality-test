@@ -167,7 +167,7 @@ with st.sidebar:
                     scopes=["https://www.googleapis.com/auth/spreadsheets", "https://www.googleapis.com/auth/drive"]
                 )
                 client = gspread.authorize(creds)
-                sheet = client.open_by_key(TARGET_SPREADSHEET_ID).sheet1
+                sheet = client.open_by_key("1hkFRa9v6wbGqmT1RAKvm9EJhuEIRS-R9YAELThPJRW0").sheet1
                 
                 # 2. スプレッドシートの2行目以降（データ部分）をクリア
                 sheet.batch_clear(["A2:Z1000"])
