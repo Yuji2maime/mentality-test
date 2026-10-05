@@ -159,9 +159,26 @@ with st.sidebar:
         # 2. 保存データの削除機能
         st.sidebar.subheader("🗑️ データ管理")
         if st.sidebar.button("保存された履歴データをすべて削除", use_container_width=True):
+            try:
+                # 1. スプレッドシートに接続
+                creds_data = st.secrets.get("gcp_credentials") or st.secrets.get("gcp_service_account")
+                creds = Credentials.from_service_account_info(
+                    creds_data, 
+                    scopes=["https://www.googleapis.com/auth/spreadsheets", "https://www.googleapis.com/auth/drive"]
+                )
+                client = gspread.authorize(creds)
+                sheet = client.open_by_key(TARGET_SPREADSHEET_ID).sheet1
+                
+                # 2. スプレッドシートの2行目以降（データ部分）をクリア
+                sheet.batch_clear(["A2:Z1000"])
+                
+            except Exception as e:
+                st.sidebar.error(f"スプレッドシートの削除に失敗しました: {e}")
+
+            # 3. アプリのキャッシュ（記憶）をクリア
             st.session_state.submissions = []
             st.cache_data.clear()
-            st.sidebar.success("すべての履歴データを削除しました！")
+            st.sidebar.success("すべての履歴データとスプレッドシートを削除しました！")
             st.rerun()
 
 # 選択肢の定義
