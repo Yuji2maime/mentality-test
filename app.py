@@ -174,7 +174,7 @@ with st.sidebar:
                 sheet = client.open_by_key("1hkFRa9v6wbGqmT1RAKvm9EJhuEIRS-R9YAELThPJRW0").sheet1
                 
                 # 2. スプレッドシートの2行目以降（データ部分）をクリア
-                sheet.batch_clear(["A2:Z1000"])
+                sheet.batch_clear(["A1:Z1000"])
                 
             except Exception as e:
                 st.sidebar.error(f"スプレッドシートの削除に失敗しました: {e}")
@@ -183,6 +183,7 @@ with st.sidebar:
             st.session_state.submissions = []
             st.cache_data.clear()
             st.sidebar.success("すべての履歴データとスプレッドシートを削除しました！")
+            st.rerun()
             
 
 # 選択肢の定義
