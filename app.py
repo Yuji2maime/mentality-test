@@ -160,8 +160,12 @@ with st.sidebar:
         st.sidebar.subheader("🗑️ データ管理")
         if st.sidebar.button("保存された履歴データをすべて削除", use_container_width=True):
             try:
-                # 1. スプレッドシートに接続
+               # 1. スプレッドシートに接続
+                import json
                 creds_data = st.secrets.get("gcp_credentials") or st.secrets.get("gcp_service_account")
+                if isinstance(creds_data, str):
+                    creds_data = json.loads(creds_data)
+
                 creds = Credentials.from_service_account_info(
                     creds_data, 
                     scopes=["https://www.googleapis.com/auth/spreadsheets", "https://www.googleapis.com/auth/drive"]
