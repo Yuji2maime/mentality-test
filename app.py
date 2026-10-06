@@ -282,11 +282,13 @@ AUX_FUNC_OPTIONS = {AUX_FUNC_OPTIONS}
         if not res_text:
             raise last_error if last_error else Exception("利用可能なGeminiモデルで応答が取得できませんでした。")
 
-        if "```json" in res_text:
-            res_text = res_text.split("```json")[1].split("```")[0].strip()
-        elif "```" in res_text:
-            res_text = res_text.split("```")[1].split("```")[0].strip()
-
+        res_text = res_text.strip()
+        # { から } までを抽出（AIの余計な前置きテキストやマークダウンをすべて無視する強力な処理）
+        start_idx = res_text.find('{')
+        end_idx = res_text.rfind('}')
+        if start_idx != -1 and end_idx != -1:
+            res_text = res_text[start_idx:end_idx+1]
+        
         data = json.loads(res_text)
         
         raw_scores = data.get("scores", {})
