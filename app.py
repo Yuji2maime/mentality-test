@@ -179,7 +179,7 @@ with st.sidebar:
             st.session_state.submissions = []
             st.cache_data.clear()
             st.sidebar.success("すべての履歴データとスプレッドシートを削除しました！")
-            st.rerun()
+            
 
 # 選択肢の定義
 MAIN_TYPE_OPTIONS = ["Fe-Si", "Se-Ti", "Ne-Fi", "Ni-Te", "Si-Fe", "Ti-Ne", "Fi-Ne", "Te-Ni", "その他"]
