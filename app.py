@@ -418,12 +418,24 @@ else:
 
                 memo = st.text_area("採用・評価メモ（認知の癖、リスク、矛盾点など）", value=def_memo, height=170, key=f"memo_{idx}_{sub.get('id', '')}")
 
-                if st.button("💾 評価を保存する", key=f"save_{idx}_{sub.get('id', '')}", type="primary"):
-                    st.balloons()
-                    st.session_state.submissions[idx]["selected_mains"] = selected_mains
-                    st.session_state.submissions[idx]["selected_auxs"] = selected_auxs
-                    st.session_state.submissions[idx]["memo"] = memo
-                    st.success(f"提出データ #{sub.get('id', '')} の評価を保存・更新しました！")
+               if st.button("💾 評価を保存する", key=f"save_{idx}_{sub.get('id', '')}", type="primary"):
+    st.balloons()
+    
+    # 選択されたリストとメモをセッションに保存
+    st.session_state.submissions[idx]["selected_mains"] = selected_mains
+    st.session_state.submissions[idx]["selected_auxs"] = selected_auxs
+    st.session_state.submissions[idx]["memo"] = memo
+    
+    # Excel出力用（文字列としてカンマ区切りで保存する必要がある場合）
+    st.session_state.submissions[idx]["主タイプ"] = ", ".join(selected_mains) if selected_mains else ""
+    st.session_state.submissions[idx]["補助機能"] = ", ".join(selected_auxs) if selected_auxs else ""
+    
+    st.success(f"提出データ #{sub.get('id', '')} の評価を保存・更新しました！")
+    
+    # ★ここが一番重要です：画面を再描画してExcelダウンロードに最新状態を即時反映
+    import time
+    time.sleep(1) 
+    st.rerun()
                 
                 # --- レーダーチャートを各個人のデータ内に表示 ---
                 st.markdown("---")
