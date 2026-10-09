@@ -119,34 +119,34 @@ def download_button(data_row):
         return False
         # --- ここから追加 ---
         def update_google_sheet(row_index, main_type, sub_type, memo):
-            """Googleスプレッドシートの指定行（評価・メモ）を更新する関数"""
-            try:
-               creds_data = st.secrets.get("gcp_credentials") or st.secrets.get("gcp_service_account")
-               if isinstance(creds_data, str):
-                   creds_dict = json.loads(creds_data)
-               else:
-                   creds_dict = dict(creds_data)
+    """Googleスプレッドシートの指定行（評価・メモ）を更新する関数"""
+    try:
+        creds_data = st.secrets.get("gcp_credentials") or st.secrets.get("gcp_service_account")
+        if isinstance(creds_data, str):
+            creds_dict = json.loads(creds_data)
+        else:
+            creds_dict = dict(creds_data)
             
-               scopes = [
-                   "https://www.googleapis.com/auth/spreadsheets",
-                   "https://www.googleapis.com/auth/drive"
-               ]
-               credentials = Credentials.from_service_account_info(creds_dict, scopes=scopes)
-               client = gspread.authorize(credentials)
+        scopes = [
+            "https://www.googleapis.com/auth/spreadsheets",
+            "https://www.googleapis.com/auth/drive"
+        ]
+        credentials = Credentials.from_service_account_info(creds_dict, scopes=scopes)
+        client = gspread.authorize(credentials)
         
-               sheet = client.open_by_key(TARGET_SPREADSHEET_ID).sheet1
+        sheet = client.open_by_key(TARGET_SPREADSHEET_ID).sheet1
         
-               # スプレッドシートは1行目がヘッダーなので、データは2行目から始まる
-               # row_index (0始まり) + 2 で実際の行番号になる
-               actual_row = row_index + 2
+        # スプレッドシートは1行目がヘッダーなので、データは2行目から始まる
+        # row_index (0始まり) + 2 で実際の行番号になる
+        actual_row = row_index + 2
         
-               # O列(15列目:主タイプ), P列(16列目:補助機能), Q列(17列目:メモ)を想定
-               # ※もし列の順番が違う場合は、ここで列のアルファベットを修正してください
-               sheet.update(f'O{actual_row}:Q{actual_row}', [[main_type, sub_type, memo]])
-               return True
-           except Exception as e:
-               st.error(f"スプレッドシートの更新時にエラーが発生しました: {e}")
-               return False
+        # O列(15列目:主タイプ), P列(16列目:補助機能), Q列(17列目:メモ)を想定
+        # ※もし列の順番が違う場合は、ここで列のアルファベットを修正してください
+        sheet.update(f'O{actual_row}:Q{actual_row}', [[main_type, sub_type, memo]])
+        return True
+    except Exception as e:
+        st.error(f"スプレッドシートの更新時にエラーが発生しました: {e}")
+        return False
 # --- ここまで追加 ---
 
 # --- サイドバー機能：ホーム画面追加案内 & データ削除 ---
