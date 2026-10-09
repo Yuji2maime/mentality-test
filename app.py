@@ -479,10 +479,7 @@ else:
     
                     
     
-                    # ★ここが一番重要です：画面を再描画してExcelダウンロードに最新状態を即時反映
-                    import time
-                    time.sleep(1) 
-                    st.rerun()
+                    
                 
                 # --- レーダーチャートを各個人のデータ内に表示 ---
                 st.markdown("---")
