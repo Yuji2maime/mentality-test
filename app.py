@@ -469,29 +469,29 @@ else:
                     st.balloons()
         
                     # Excel出力用の文字列を作成
-                        main_str = ", ".join(selected_mains) if selected_mains else ""
-                        sub_str = ", ".join(selected_auxs) if selected_auxs else ""
+                    main_str = ", ".join(selected_mains) if selected_mains else ""
+                    sub_str = ", ".join(selected_auxs) if selected_auxs else ""
         
                         # 1. セッション（一時メモリ）の保存
-                        st.session_state.submissions[idx]["selected_mains"] = selected_mains
-                        st.session_state.submissions[idx]["selected_auxs"] = selected_auxs
-                        st.session_state.submissions[idx]["memo"] = memo
-                        st.session_state.submissions[idx]["主タイプ"] = main_str
-                        st.session_state.submissions[idx]["補助機能"] = sub_str
+                    st.session_state.submissions[idx]["selected_mains"] = selected_mains
+                    st.session_state.submissions[idx]["selected_auxs"] = selected_auxs
+                    st.session_state.submissions[idx]["memo"] = memo
+                    st.session_state.submissions[idx]["主タイプ"] = main_str
+                    st.session_state.submissions[idx]["補助機能"] = sub_str
         
                     # 2. スプレッドシート側の直接更新を実行
-                        with st.spinner("スプレッドシートに保存中..."):
+                with st.spinner("スプレッドシートに保存中..."):
                              success = update_google_sheet(idx, main_str, sub_str, memo)
             
-                        if success:
+                if success:
                             st.success(f"提出データ #{sub.get('id', '')} の評価をスプレッドシートに保存・更新しました！")
-                        else:
+                else:
                             st.warning("セッションには保存されましたが、スプレッドシートの更新に失敗しました。")
                 
                 # 画面を再描画して最新状態を即時反映
-                    import time
-                    time.sleep(1.5)
-                    st.rerun()
+                import time
+                time.sleep(1.5)
+                st.rerun()
     
                     
     
