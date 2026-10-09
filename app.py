@@ -481,7 +481,7 @@ else:
         
                     # 2. スプレッドシート側の直接更新を実行
                     with st.spinner("スプレッドシートに保存中..."):
-                        success = update_google_sheet(idx, main_str, sub_str, memo)
+                         success = update_google_sheet(idx, main_str, sub_str, memo)
             
                     if success:
                         st.success(f"提出データ #{sub.get('id', '')} の評価をスプレッドシートに保存・更新しました！")
