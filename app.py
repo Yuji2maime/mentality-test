@@ -94,7 +94,7 @@ if "view_mode" not in st.session_state:
 # SecretsからAPIキーを自動読み込み
 api_key = st.secrets["GEMINI_API_KEY"]
 
-def save_to_google_sheet(data_row):
+def download_button(data_row):
     """Googleスプレッドシートにデータを1行追加する関数"""
     try:
         creds_data = st.secrets.get("gcp_credentials") or st.secrets.get("gcp_service_account")
@@ -117,6 +117,37 @@ def save_to_google_sheet(data_row):
     except Exception as e:
         st.error(f"スプレッドシートへの保存時にエラーが発生しました: {e}")
         return False
+        # --- ここから追加 ---
+        def update_google_sheet(row_index, main_type, sub_type, memo):
+            """Googleスプレッドシートの指定行（評価・メモ）を更新する関数"""
+            try:
+               creds_data = st.secrets.get("gcp_credentials") or st.secrets.get("gcp_service_account")
+               if isinstance(creds_data, str):
+                   creds_dict = json.loads(creds_data)
+               else:
+                   creds_dict = dict(creds_data)
+            
+               scopes = [
+                   "https://www.googleapis.com/auth/spreadsheets",
+                   "https://www.googleapis.com/auth/drive"
+               ]
+               credentials = Credentials.from_service_account_info(creds_dict, scopes=scopes)
+               client = gspread.authorize(credentials)
+        
+               sheet = client.open_by_key(TARGET_SPREADSHEET_ID).sheet1
+        
+               # スプレッドシートは1行目がヘッダーなので、データは2行目から始まる
+               # row_index (0始まり) + 2 で実際の行番号になる
+               actual_row = row_index + 2
+        
+               # O列(15列目:主タイプ), P列(16列目:補助機能), Q列(17列目:メモ)を想定
+               # ※もし列の順番が違う場合は、ここで列のアルファベットを修正してください
+               sheet.update(f'O{actual_row}:Q{actual_row}', [[main_type, sub_type, memo]])
+               return True
+           except Exception as e:
+               st.error(f"スプレッドシートの更新時にエラーが発生しました: {e}")
+               return False
+# --- ここまで追加 ---
 
 # --- サイドバー機能：ホーム画面追加案内 & データ削除 ---
 with st.sidebar:
@@ -368,7 +399,7 @@ if st.session_state.view_mode == "applicant":
             ]
             
             # スプレッドシートに保存を実行
-            save_to_google_sheet(row_data)
+            return False(row_data)
 
             st.markdown("---")
             if st.button("🔄 次の人のテストを始める（画面リセット）"):
@@ -419,18 +450,34 @@ else:
                 memo = st.text_area("採用・評価メモ（認知の癖、リスク、矛盾点など）", value=def_memo, height=170, key=f"memo_{idx}_{sub.get('id', '')}")
 
                 if st.button("💾 評価を保存する", key=f"save_{idx}_{sub.get('id', '')}", type="primary"):
-                    st.balloons()
+                st.balloons()
+                
+                # Excel出力用の文字列を作成
+                main_str = ", ".join(selected_mains) if selected_mains else ""
+                sub_str = ", ".join(selected_auxs) if selected_auxs else ""
+                
+                # 1. セッション（一時メモリ）の保存
+                st.session_state.submissions[idx]["selected_mains"] = selected_mains
+                st.session_state.submissions[idx]["selected_auxs"] = selected_auxs
+                st.session_state.submissions[idx]["memo"] = memo
+                st.session_state.submissions[idx]["主タイプ"] = main_str
+                st.session_state.submissions[idx]["補助機能"] = sub_str
+                
+                # 2. スプレッドシート側の直接更新を実行
+                with st.spinner("スプレッドシートに保存中..."):
+                    success = update_google_sheet(idx, main_str, sub_str, memo)
+                
+                if success:
+                    st.success(f"提出データ #{sub.get('id', '')} の評価をスプレッドシートに保存・更新しました！")
+                else:
+                    st.warning("セッションには保存されましたが、スプレッドシートの更新に失敗しました。")
+                
+                # 画面を再描画して最新状態を即時反映
+                import time
+                time.sleep(1.5)
+                st.rerun()
     
-                    # 選択されたリストとメモをセッションに保存
-                    st.session_state.submissions[idx]["selected_mains"] = selected_mains
-                    st.session_state.submissions[idx]["selected_auxs"] = selected_auxs
-                    st.session_state.submissions[idx]["memo"] = memo
-    
-                    # Excel出力用（文字列としてカンマ区切りで保存する必要がある場合）
-                    st.session_state.submissions[idx]["主タイプ"] = ", ".join(selected_mains) if selected_mains else ""
-                    st.session_state.submissions[idx]["補助機能"] = ", ".join(selected_auxs) if selected_auxs else ""
-    
-                    st.success(f"提出データ #{sub.get('id', '')} の評価を保存・更新しました！")
+                    
     
                     # ★ここが一番重要です：画面を再描画してExcelダウンロードに最新状態を即時反映
                     import time
