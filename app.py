@@ -450,27 +450,27 @@ else:
                 memo = st.text_area("採用・評価メモ（認知の癖、リスク、矛盾点など）", value=def_memo, height=170, key=f"memo_{idx}_{sub.get('id', '')}")
 
                 if st.button("💾 評価を保存する", key=f"save_{idx}_{sub.get('id', '')}", type="primary"):
-                st.balloons()
-                
-                # Excel出力用の文字列を作成
-                main_str = ", ".join(selected_mains) if selected_mains else ""
-                sub_str = ", ".join(selected_auxs) if selected_auxs else ""
-                
-                # 1. セッション（一時メモリ）の保存
-                st.session_state.submissions[idx]["selected_mains"] = selected_mains
-                st.session_state.submissions[idx]["selected_auxs"] = selected_auxs
-                st.session_state.submissions[idx]["memo"] = memo
-                st.session_state.submissions[idx]["主タイプ"] = main_str
-                st.session_state.submissions[idx]["補助機能"] = sub_str
-                
-                # 2. スプレッドシート側の直接更新を実行
-                with st.spinner("スプレッドシートに保存中..."):
-                    success = update_google_sheet(idx, main_str, sub_str, memo)
-                
-                if success:
-                    st.success(f"提出データ #{sub.get('id', '')} の評価をスプレッドシートに保存・更新しました！")
-                else:
-                    st.warning("セッションには保存されましたが、スプレッドシートの更新に失敗しました。")
+                    st.balloons()
+        
+                    # Excel出力用の文字列を作成
+                    main_str = ", ".join(selected_mains) if selected_mains else ""
+                    sub_str = ", ".join(selected_auxs) if selected_auxs else ""
+        
+                    # 1. セッション（一時メモリ）の保存
+                    st.session_state.submissions[idx]["selected_mains"] = selected_mains
+                    st.session_state.submissions[idx]["selected_auxs"] = selected_auxs
+                    st.session_state.submissions[idx]["memo"] = memo
+                    st.session_state.submissions[idx]["主タイプ"] = main_str
+                    st.session_state.submissions[idx]["補助機能"] = sub_str
+        
+                    # 2. スプレッドシート側の直接更新を実行
+                    with st.spinner("スプレッドシートに保存中..."):
+                        success = update_google_sheet(idx, main_str, sub_str, memo)
+            
+                    if success:
+                        st.success(f"提出データ #{sub.get('id', '')} の評価をスプレッドシートに保存・更新しました！")
+                    else:
+                        st.warning("セッションには保存されましたが、スプレッドシートの更新に失敗しました。")
                 
                 # 画面を再描画して最新状態を即時反映
                 import time
