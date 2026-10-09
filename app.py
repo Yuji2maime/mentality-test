@@ -398,8 +398,7 @@ if st.session_state.view_mode == "applicant":
                 json.dumps(new_data["scores"], ensure_ascii=False)
             ]
             
-            # スプレッドシートに保存を実行
-            return False(row_data)
+            
 
             st.markdown("---")
             if st.button("🔄 次の人のテストを始める（画面リセット）"):
