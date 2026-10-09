@@ -399,8 +399,25 @@ if st.session_state.view_mode == "applicant":
             ]
             
             
-
-            st.markdown("---")
+            try:
+                creds_data = st.secrets.get("gcp_credentials") or st.secrets.get("gcp_service_account")
+                if isinstance(creds_data, str):
+                    creds_dict = json.loads(creds_data)
+                else:
+                    creds_dict = dict(creds_data)
+            
+                scopes = [
+                    "https://www.googleapis.com/auth/spreadsheets",
+                    "https://www.googleapis.com/auth/drive"
+                ]
+                credentials = Credentials.from_service_account_info(creds_dict, scopes=scopes)
+                client = gspread.authorize(credentials)
+            
+                sheet = client.open_by_key(TARGET_SPREADSHEET_ID).sheet1
+                sheet.append_row(row_data)
+            except Exception as e:
+                st.error(f"スプレッドシートへの保存に失敗しました: {e}")
+                st.markdown("---")
             if st.button("🔄 次の人のテストを始める（画面リセット）"):
                 saved_submissions = st.session_state.get("submissions", [])
                 st.session_state.clear()
