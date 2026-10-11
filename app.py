@@ -552,10 +552,26 @@ else:
         sub_id = str(sub.get('id', ''))
         name = sub.get('name', '未入力')
         analysis = sub.get('analysis', {})
-        mains = ", ".join(analysis.get('main_types', []))
-        auxs = ", ".join(analysis.get('sub_functions', []))
-        memo = str(analysis.get('memo', ''))
+
+        # 保存された最新のデータを優先して取得し、なければ旧形式から取得
+        mains = sub.get('主タイプ', '')
+        if not mains:
+            mains = ", ".join(sub.get('selected_mains', []))
+        if not mains:
+            mains = ", ".join(analysis.get('main_types', []))
+
+        auxs = sub.get('補助機能', '')
+        if not auxs:
+            auxs = ", ".join(sub.get('selected_auxs', []))
+        if not auxs:
+            auxs = ", ".join(analysis.get('sub_functions', []))
+
+        memo = sub.get('memo', '')
+        if not memo:
+            memo = str(analysis.get('memo', ''))
+
         sc = analysis.get('scores', {})
+        
         
         row_data = [
             sub_id, 
