@@ -418,17 +418,20 @@ if st.session_state.view_mode == "applicant":
             st.success("送信が完了いたしました。ご協力ありがとうございました！いただいた内容は、次回面接にてより良い対話をさせていただくための参考として活用いたします。本日の作業は以上で終了です。そのまま画面をお閉じください。")
             
             # スプレッドシート用にデータをリスト化
+            # スプレッドシートの列順（A:ID, B:氏名, C:主タイプ, D:補助機能, E:メモ, F〜:スコア）に完璧に合わせる
             row_data = [
                 new_data["id"],
-                new_data["timestamp"],
                 new_data["name"],
-                new_data["text"],
                 json.dumps(new_data["selected_mains"], ensure_ascii=False),
                 json.dumps(new_data["selected_auxs"], ensure_ascii=False),
                 new_data["memo"],
-                json.dumps(new_data["scores"], ensure_ascii=False)
+                new_data["scores"].get("論理的分析力", 0),
+                new_data["scores"].get("直観・本質把握", 0),
+                new_data["scores"].get("計画・規律性", 0),
+                new_data["scores"].get("独立・内省力", 0),
+                new_data["scores"].get("対人・柔軟性", 0)
             ]
-            
+                    
             
             try:
                 creds_data = st.secrets.get("gcp_credentials") or st.secrets.get("gcp_service_account")
