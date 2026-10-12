@@ -451,6 +451,8 @@ if st.session_state.view_mode == "applicant":
                 sheet.append_row(row_data)
             except Exception as e:
                 st.error(f"スプレッドシートへの保存に失敗しました: {e}")
+                import traceback
+                st.code(traceback.format_exc())
                 st.markdown("---")
             if st.button("🔄 次の人のテストを始める（画面リセット）"):
                 saved_submissions = st.session_state.get("submissions", [])
