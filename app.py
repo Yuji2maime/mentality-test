@@ -67,17 +67,42 @@ def fetch_from_spreadsheet():
             except Exception:
                 scores = {}
 
+            # O列(index 14)、P列(index 15)、Q列(index 16)に保存された最新の管理画面データを優先取得
+            saved_main = row_data[14] if len(row_data) > 14 and row_data[14] else None
+            saved_sub = row_data[15] if len(row_data) > 15 and row_data[15] else None
+            saved_memo = row_data[16] if len(row_data) > 16 and row_data[16] else (row_data[6] if len(row_data) > 6 else "")
+
+            # リスト形式か文字列かを安全に判定
+            if saved_main:
+                try:
+                    final_mains = json.loads(saved_main) if saved_main.startswith('[') else [saved_main]
+                except:
+                    final_mains = [saved_main]
+            else:
+                final_mains = main_types
+
+            if saved_sub:
+                try:
+                    final_subs = json.loads(saved_sub) if saved_sub.startswith('[') else [saved_sub]
+                except:
+                    final_subs = [saved_sub]
+            else:
+                final_subs = sub_funcs
+
             fetched_results.append({
-                "id": row_data[0],
-                "timestamp": row_data[1],
-                "name": row_data[2] if row_data[2] else "匿名希望",
-                "text": row_data[3],
+                "id": row_data[0] if len(row_data) > 0 else "",
+                "timestamp": row_data[1] if len(row_data) > 1 else "",
+                "name": row_data[2] if len(row_data) > 2 and row_data[2] else "匿名希望",
+                "text": row_data[3] if len(row_data) > 3 else "",
                 "analysis": {
-                    "main_types": main_types,
-                    "sub_functions": sub_funcs,
-                    "memo": row_data[6],
+                    "main_types": final_mains,
+                    "sub_functions": final_subs,
+                    "memo": saved_memo,
                     "scores": scores
-                }
+                },
+                "主タイプ": ", ".join(final_mains) if isinstance(final_mains, list) else str(final_mains),
+                "補助機能": ", ".join(final_subs) if isinstance(final_subs, list) else str(final_subs),
+                "memo": saved_memo
             })
         return fetched_results
 
