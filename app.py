@@ -488,11 +488,22 @@ else:
                 def_auxs = sub.get("selected_auxs", ai_data.get("sub_functions", []))
                 def_memo = sub.get("memo", ai_data.get("memo", ""))
 
+                # 選択肢に含まれる安全なデフォルト値だけにフィルタリング
+                if isinstance(def_mains, list):
+                    safe_def_mains = [m for m in def_mains if m in MAIN_TYPE_OPTIONS]
+                else:
+                    safe_def_mains = [def_mains] if def_mains in MAIN_TYPE_OPTIONS else []
+        
+                if isinstance(def_auxs, list):
+                    safe_def_auxs = [a for a in def_auxs if a in AUX_FUNC_OPTIONS]
+                else:
+                    safe_def_auxs = [def_auxs] if def_auxs in AUX_FUNC_OPTIONS else []
+        
                 col1, col2 = st.columns(2)
                 with col1:
-                    selected_mains = st.multiselect("主タイプ", MAIN_TYPE_OPTIONS, default=def_mains, key=f"main_{idx}_{sub.get('id', '')}")
+                    selected_mains = st.multiselect("主タイプ", MAIN_TYPE_OPTIONS, default=safe_def_mains, key=f"main_{idx}_{sub.get('id', '')}")
                 with col2:
-                    selected_auxs = st.multiselect("補助機能", AUX_FUNC_OPTIONS, default=def_auxs, key=f"aux_{idx}_{sub.get('id', '')}")
+                    selected_auxs = st.multiselect("補助機能", AUX_FUNC_OPTIONS, default=safe_def_auxs, key=f"aux_{idx}_{sub.get('id', '')}")
 
                 memo = st.text_area("採用・評価メモ（認知の癖、リスク、矛盾点など）", value=def_memo, height=170, key=f"memo_{idx}_{sub.get('id', '')}")
 
