@@ -374,15 +374,21 @@ if st.session_state.view_mode == "applicant":
                 mains, auxs, memo, scores = analyze_text_with_ai(user_input, api_key)
 
             new_data = {
-                "id": len(st.session_state.submissions) + 1,
-                "timestamp": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-                "name": applicant_name,
-                "text": user_input,
-                "selected_mains": mains,
-                "selected_auxs": auxs,
+            "id": len(st.session_state.submissions) + 1,
+            "timestamp": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            "name": applicant_name,
+            "text": user_input,
+            # 管理画面やExcelが正しく読み込めるように解析結果を構造化して持たせる
+            "analysis": {
+                "main_types": mains,
+                "sub_functions": auxs,
                 "memo": memo,
                 "scores": scores
-            }
+            },
+            "selected_mains": mains,
+            "selected_auxs": auxs,
+            "memo": memo
+        }
             st.session_state.submissions.append(new_data)
             st.success("送信が完了いたしました。ご協力ありがとうございました！いただいた内容は、次回面接にてより良い対話をさせていただくための参考として活用いたします。本日の作業は以上で終了です。そのまま画面をお閉じください。")
             
