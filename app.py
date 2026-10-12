@@ -419,18 +419,19 @@ if st.session_state.view_mode == "applicant":
             
             # スプレッドシート用にデータをリスト化
             # スプレッドシートの列順（A:ID, B:氏名, C:主タイプ, D:補助機能, E:メモ, F〜:スコア）に完璧に合わせる
+            # スプレッドシート用のデータを安全にリスト化（キーが存在しない場合もエラーにしない）
             row_data = [
-                new_data["id"],
-                new_data["name"],
-                json.dumps(new_data["selected_mains"], ensure_ascii=False),
-                json.dumps(new_data["selected_auxs"], ensure_ascii=False),
-                new_data["memo"],
-                new_data["scores"].get("論理的分析力", 0),
-                new_data["scores"].get("直観・本質把握", 0),
-                new_data["scores"].get("計画・規律性", 0),
-                new_data["scores"].get("独立・内省力", 0),
-                new_data["scores"].get("対人・柔軟性", 0)
-            ]
+        new_data.get("id", ""),
+            new_data.get("name", ""),
+            json.dumps(new_data.get("selected_mains", []), ensure_ascii=False),
+            json.dumps(new_data.get("selected_auxs", []), ensure_ascii=False),
+            new_data.get("memo", ""),
+            new_data.get("scores", {}).get("論理的分析力", 0),
+            new_data.get("scores", {}).get("直観・本質把握", 0),
+            new_data.get("scores", {}).get("計画・規律性", 0),
+            new_data.get("scores", {}).get("独立・内省力", 0),
+            new_data.get("scores", {}).get("対人・柔軟性", 0)
+    ]
                     
             
             try:
