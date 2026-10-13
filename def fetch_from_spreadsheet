@@ -53,17 +53,23 @@ def fetch_from_spreadsheet():
             row_data = row + [''] * (8 - len(row)) 
             
             try:
-                main_types = json.loads(row_data[4]) if row_data[4] else []
+                main_types = json.loads(row_data[2]) if row_data[2] else []
             except Exception:
-                main_types = [row_data[4]] if row_data[4] else []
-                
+                main_types = [row_data[2]] if row_data[2] else []
+
             try:
-                sub_funcs = json.loads(row_data[5]) if row_data[5] else []
+                sub_funcs = json.loads(row_data[3]) if row_data[3] else []
             except Exception:
-                sub_funcs = [row_data[5]] if row_data[5] else []
-                
+                sub_funcs = [row_data[3]] if row_data[3] else []
+
             try:
-                scores = json.loads(row_data[7]) if row_data[7] else {}
+                scores = {
+                    'logic': float(row_data[5]) if row_data[5] != '' else 0,
+                    'intuition': float(row_data[6]) if row_data[6] != '' else 0,
+                    'planning': float(row_data[7]) if row_data[7] != '' else 0,
+                    'independence': float(row_data[8]) if row_data[8] != '' else 0,
+                    'flexibility': float(row_data[9]) if row_data[9] != '' else 0,
+                }
             except Exception:
                 scores = {}
 
