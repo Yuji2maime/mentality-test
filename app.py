@@ -553,12 +553,22 @@ else:
                 categories = ['論理的分析力', '直観・本質把握', '計画・規律性', '独立・内省力', '対人・柔軟性']
                 analysis_data = sub.get('analysis', {})
                 ai_scores = sub.get('ai_scores') or sub.get('scores') or analysis_data.get('scores', {})
+    
+                # ai_scoresが文字列やNoneであっても安全に辞書に変換する処理
+                if isinstance(ai_scores, str):
+                    try:
+                        ai_scores = json.loads(ai_scores)
+                    except Exception:
+                        ai_scores = {}
+                if not isinstance(ai_scores, dict):
+                    ai_scores = {}
+
                 scores_list = [
-                    ai_scores.get('logic', 50),
-                    ai_scores.get('intuition', 50),
-                    ai_scores.get('planning', 50),
-                    ai_scores.get('independence', 50),
-                    ai_scores.get('flexibility', 50)
+                    ai_scores.get('logic', ai_scores.get('論理的分析力', 50)),
+                    ai_scores.get('intuition', ai_scores.get('直観・本質把握', 50)),
+                    ai_scores.get('planning', ai_scores.get('計画・規律性', 50)),
+                    ai_scores.get('independence', ai_scores.get('独立・内省力', 50)),
+                    ai_scores.get('flexibility', ai_scores.get('対人・柔軟性', 50))
                 ]
                 
                 fig = go.Figure()
