@@ -629,6 +629,13 @@ else:
             memo = str(analysis.get('memo', ''))
 
         sc = analysis.get('scores', {})
+        if isinstance(sc, str):
+            try:
+                sc = json.loads(sc)
+            except Exception:
+                sc = {}
+        if not isinstance(sc, dict):
+            sc = {}
         
         
         row_data = [
