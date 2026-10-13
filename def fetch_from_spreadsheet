@@ -50,7 +50,7 @@ def fetch_from_spreadsheet():
             if not row:
                 continue
             
-            row_data = row + [''] * (8 - len(row)) 
+            row_data = row + [''] * (20 - len(row))
             
             try:
                 main_types = json.loads(row_data[2]) if row_data[2] else []
