@@ -8,8 +8,8 @@ import streamlit as st
 from google.oauth2.service_account import Credentials
 
 # 【重要】スプレッドシートID
-TARGET_SPREADSHEET_ID = "1hkFRa9v6wbGqmT1RAKvm9EJhuEiR9-R9YAELThPJRW0"
-
+# 【重要】スプレッドシートID
+TARGET_SPREADSHEET_ID = "1hkFRa9v6wbGqmT1RAKvm9EJhuEiR9-R9YAELThPJRW0".strip()
 st.set_page_config(page_title="AI統合型 認知特性テスト", layout="wide")
 
 def fetch_from_spreadsheet():
@@ -39,7 +39,7 @@ def fetch_from_spreadsheet():
     ]
     creds = Credentials.from_service_account_info(creds_data, scopes=scope)
     client = gspread.authorize(creds)
-    sheet = client.open_by_key(TARGET_SPREADSHEET_ID).worksheet("シート1")
+    sheet = client.open_by_key(TARGET_SPREADSHEET_ID.strip()).worksheet("シート1")
     rows = sheet.get_all_values()
     if len(rows) <= 1:
         return []
