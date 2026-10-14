@@ -39,7 +39,7 @@ def fetch_from_spreadsheet():
     ]
     creds = Credentials.from_service_account_info(creds_data, scopes=scope)
     client = gspread.authorize(creds)
-    sheet = client.open_by_key(TARGET_SPREADSHEET_ID.strip()).worksheet("シート1")
+    sheet = client.open_by_key(TARGET_SPREADSHEET_ID.strip()).get_worksheet(0)
     rows = sheet.get_all_values()
     if len(rows) <= 1:
         return []
