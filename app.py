@@ -14,9 +14,19 @@ st.set_page_config(page_title="AI統合型 認知特性テスト", layout="wide"
 
 def fetch_from_spreadsheet():
     """スプレッドシートから全データを読み込む"""
-    creds_data = st.secrets.get("gcp_credentials") or st.secrets.get("gcp_service_account")
-    if not creds_data:
+    creds_raw = st.secrets.get("gcp_credentials") or st.secrets.get("gcp_service_account")
+    if not creds_raw:
         st.error("Google Cloudの認証情報（Secrets）が見つかりません。StreamlitのSecrets設定を確認してください。")
+        return []
+
+    # Secretsの値が文字列（JSON文字列）である場合を考慮してパースする
+    try:
+        if isinstance(creds_raw, str):
+            creds_data = json.loads(creds_raw)
+        else:
+            creds_data = dict(creds_raw)
+    except Exception as e:
+        st.error(f"認証情報の解析に失敗しました: {e}")
         return []
 
     scope = [
