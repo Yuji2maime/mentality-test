@@ -44,7 +44,7 @@ def fetch_from_spreadsheet():
     if len(rows) <= 1:
         return []
     
-    data_rows = rows[1:]
+    data_rows = rows
     records = []
     for r in data_rows:
         # インデックスエラーを防ぐためパディングを20に拡張
