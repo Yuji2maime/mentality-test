@@ -24,7 +24,11 @@ def fetch_from_spreadsheet():
         if isinstance(creds_raw, str):
             creds_data = json.loads(creds_raw)
         else:
-            creds_data = dict(creds_raw)
+            creds_data = creds_raw
+        
+        # リスト形式（[...]）で保存されている場合は、最初の要素を取り出す
+        if isinstance(creds_data, list):
+            creds_data = creds_data[0]
     except Exception as e:
         st.error(f"認証情報の解析に失敗しました: {e}")
         return []
