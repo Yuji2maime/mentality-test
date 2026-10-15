@@ -12,8 +12,6 @@ st.set_page_config(
 TARGET_SPREADSHEET_ID = "1hkFRa9v6wbGqmT1RAKvm9EJhuEIRS-R9YAELThPJRW0"
 
 @st.cache_resource
-py_client = None
-
 def get_gspread_client():
     scopes = [
         "https://www.googleapis.com/auth/spreadsheets",
