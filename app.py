@@ -98,7 +98,7 @@ def main():
         with st.form("candidate_form"):
             col1, col2 = st.columns(2)
             with col1:
-                input_id = st.text_input("受検者ID", value="2")
+                input_id = st.text_input("受検者ID", value="")
                 input_name = st.text_input("氏名")
                 input_main_trait = st.text_input("メイン特性 (例: Te-Ni)")
                 input_sub_trait = st.text_input("サブ特性 (例: 外向思考(Te))")
