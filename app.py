@@ -3,20 +3,20 @@ import gspread
 from google.oauth2.service_account import Credentials
 import json
 
-# ページ設定
-st.set_page_config(page_title="AI統合型 認知特性テスト - 管理画面", layout="wide")
+st.set_page_config(page_title="AI統合型 認知特性テスト - デバッグ画面", layout="wide")
 
-# スプレッドシートID
 TARGET_SPREADSHEET_ID = "1hkFRa9v6wbGqmT1RAKvm9EJhuEiR9-R9YAELThPJRW0"
 
 def fetch_from_spreadsheet():
     try:
+        st.write("--- 接続テスト開始 ---")
+        
         scopes = [
             "https://www.googleapis.com/auth/spreadsheets",
             "https://www.googleapis.com/auth/drive"
         ]
         
-        # StreamlitのSecretsから認証情報を取得（gcp_credentialsに対応）
+        st.write("1. Streamlit Secretsから認証情報を取得しています...")
         if "gcp_credentials" in st.secrets:
             raw_creds = st.secrets["gcp_credentials"]
             if isinstance(raw_creds, str):
@@ -24,27 +24,33 @@ def fetch_from_spreadsheet():
             else:
                 creds_dict = dict(raw_creds)
             creds = Credentials.from_service_account_info(creds_dict, scopes=scopes)
-        elif "gcp_service_account" in st.secrets:
-            creds_dict = dict(st.secrets["gcp_service_account"])
-            creds = Credentials.from_service_account_info(creds_dict, scopes=scopes)
+            st.write("-> 【成功】認証情報のパースが完了しました。")
         else:
-            st.error("Streamlit Secretsに認証情報（gcp_credentials）が設定されていません。")
+            st.error("【エラー】gcp_credentials が見つかりません。")
             return []
             
+        st.write("2. gspreadクライアントの認可を行っています...")
         client = gspread.authorize(creds)
+        st.write("-> 【成功】クライアントの認可が完了しました。")
         
-        # スプレッドシートを開く（IDで指定し、一番左のシートを取得）
+        st.write(f"3. スプレッドシート（ID: {TARGET_SPREADSHEET_ID}）を開いています...")
         spreadsheet = client.open_by_key(TARGET_SPREADSHEET_ID.strip())
-        sheet = spreadsheet.get_worksheet(0)
+        st.write("-> 【成功】スプレッドシートを開くことができました！")
         
+        st.write("4. ワークシートを取得しています...")
+        sheet = spreadsheet.get_worksheet(0)
+        st.write("-> 【成功】ワークシートを取得しました。")
+        
+        st.write("5. 行データをすべて取得しています...")
         rows = sheet.get_all_values()
+        st.write(f"-> 【成功】全 {len(rows)} 行のデータを取得しました！")
+        
         if len(rows) <= 1:
             return []
             
-        data_rows = rows[1:] # ヘッダーを除く
+        data_rows = rows[1:]
         records = []
         for r in data_rows:
-            # インデックスエラーを防ぐためパディングを20に拡張
             padded = list(r) + [""] * max(0, 20 - len(r))
             record = {
                 "id": padded[0],
@@ -54,7 +60,6 @@ def fetch_from_spreadsheet():
                 "memo": padded[4],
                 "scores": []
             }
-            # スコア（5〜9列目）のパース処理
             for val in padded[5:10]:
                 try:
                     record["scores"].append(float(val) if val != "" else 0.0)
@@ -63,24 +68,16 @@ def fetch_from_spreadsheet():
             records.append(record)
         return records
     except Exception as e:
-        st.error(f"スプレッドシートの読み込み中にエラーが発生しました: {e}")
+        st.error(f"【詳細エラー】以下の箇所で例外が発生しました: {e}")
         return []
 
 def main():
-    st.title("AI統合型 認知特性テスト - 管理画面")
-    
-    with st.spinner("スプレッドシートからデータを読み込んでいます..."):
-        records = fetch_from_spreadsheet()
-        
-    if not records:
-        st.warning("データが取得できなかったか、スプレッドシートが空です。")
-        return
-        
-    st.success(f"{len(records)} 件のデータを取得しました。")
-    
-    # データ一覧の表示
-    for rec in records:
-        st.write(f"名前: **{rec['name']}** (ID: {rec['id']}) | メイン: {rec['main_func']} | サブ: {rec['sub_func']}")
+    st.title("AI統合型 認知特性テスト - 接続テスト画面")
+    records = fetch_from_spreadsheet()
+    if records:
+        st.success(f"🎉 データの読み込みに完全成功しました！（計 {len(records)} 件）")
+        for rec in records:
+            st.write(f"名前: **{rec['name']}** (ID: {rec['id']})")
 
 if __name__ == "__main__":
     main()
