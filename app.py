@@ -3,6 +3,7 @@ import gspread
 from google.oauth2.service_account import Credentials
 import json
 import pandas as pd
+import plotly.graph_objects as go
 
 st.set_page_config(
     page_title="AI統合型 認知特性テスト - 管理画面", 
@@ -65,7 +66,6 @@ def main():
             st.info("現在、スプレッドシートにデータが登録されていません。2行目以降にデータを入力してください。")
         else:
             st.success(f"合計 {len(df)} 件のデータを取得しました。")
-            # テーブル（データフレーム）として綺麗に表示
             st.dataframe(df, use_container_width=True)
             
             # 詳細確認セクション
@@ -79,7 +79,45 @@ def main():
                     for col_name in df.columns[:5]:
                         st.metric(label=col_name, value=row_data.get(col_name, "-"))
                 with col2:
-                    st.write("#### 📊 スコア・詳細情報")
+                    st.write("#### 📊 スコア・レーダーチャート")
+                    
+                    # スコア列（スコア1〜5など）を抽出
+                    score_cols = [c for c in df.columns if 'スコア' in c]
+                    if not score_cols and len(df.columns) >= 10:
+                        score_cols = df.columns[5:10]
+                    
+                    scores = []
+                    categories = []
+                    for col in score_cols:
+                        val = row_data.get(col, 0)
+                        try:
+                            num_val = float(val) if val != "" else 0.0
+                        except ValueError:
+                            num_val = 0.0
+                        scores.append(num_val)
+                        categories.append(col)
+                    
+                    if scores and sum(scores) > 0:
+                        fig = go.Figure(data=go.Scatterpolar(
+                          r=scores + [scores[0]],
+                          theta=categories + [categories[0]],
+                          fill='toself'
+                        ))
+                        fig.update_layout(
+                          polar=dict(
+                            radialaxis=dict(
+                              visible=True,
+                              range=[0, 100]
+                            )),
+                          showlegend=False,
+                          margin=dict(l=20, r=20, t=20, b=20),
+                          height=300
+                        )
+                        st.plotly_chart(fig, use_container_width=True)
+                    else:
+                        st.info("※ スコアの数値が入力されていないためチャートを表示できません。スプレッドシートのスコア列に数値を入力し、左の「データを再読み込み」を押してください。")
+                    
+                    st.write("#### 📄 詳細データ (JSON)")
                     st.json(row_data.to_dict())
 
     elif menu == "新規データ登録・編集":
