@@ -4,6 +4,7 @@ from google.oauth2.service_account import Credentials
 import json
 import pandas as pd
 import plotly.graph_objects as go
+import google.generativeai as genai
 
 st.set_page_config(
     page_title="AI統合型 認知特性テスト システム", 
@@ -11,6 +12,13 @@ st.set_page_config(
 )
 
 TARGET_SPREADSHEET_ID = "1hkFRa9v6wbGqmT1RAKvm9EJhuEIRS-R9YAELThPJRW0"
+
+# Gemini APIの設定
+try:
+    if "GEMINI_API_KEY" in st.secrets:
+        genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
+except Exception:
+    pass
 
 @st.cache_resource
 def get_gspread_client():
@@ -79,11 +87,71 @@ def clear_all_data():
         st.error(f"一括クリア中にエラーが発生しました: {e}")
         return False
 
+def analyze_answer_with_ai(answer_text):
+    """
+    応募者の解答をGemini APIで自動分析し、特性・メモ・5軸スコアを算出する
+    """
+    try:
+        model = genai.GenerativeModel("gemini-1.5-flash")
+        prompt = f"""
+あなたは労働管理・組織人事の専門家であり、AI認知特性アナリストです。
+以下の応募者の解答テキストを分析し、JSON形式で以下の項目を評価・算出してください。
+
+評価軸（0〜100点満点の整数スコア）：
+1. 論理・合理性 (score1)
+2. 直観・洞察 (score2)
+3. 目的遂行力 (score3)
+4. 対人関係 (score4)
+5. 柔軟・適応力 (score5)
+
+その他の項目：
+- main_trait: メイン特性（例：「Te-Ni」「知性の盾系」など、思考スタイルの傾向を表す簡潔な分類）
+- sub_trait: サブ特性（例：「外向思考(Te)」など）
+- memo: メモ・所見（応募者の強みや面接・労務管理で注目すべきポイントのAI分析コメント、150〜200文字程度）
+
+応募者の解答:
+{answer_text}
+
+出力は必ず以下の純粋なJSONフォーマットのみで行ってください（Markdownの ```json や ``` などの記号は一切含めず、中括弧 {{ }} から始まる文字列のみを出力してください）：
+{{
+  "main_trait": "...",
+  "sub_trait": "...",
+  "memo": "...",
+  "score1": 75,
+  "score2": 70,
+  "score3": 80,
+  "score4": 65,
+  "score5": 85
+}}
+"""
+        response = model.generate_content(prompt)
+        text = response.text.strip()
+        if text.startswith("```json"):
+            text = text[7:]
+        if text.startswith("```"):
+            text = text[3:]
+        if text.endswith("```"):
+            text = text[:-3]
+        text = text.strip()
+        
+        data = json.loads(text)
+        return data
+    except Exception as e:
+        return {
+            "main_trait": "標準特性",
+            "sub_trait": "バランス型",
+            "memo": f"AI自動分析時にエラーが発生しました: {str(e)}",
+            "score1": 50,
+            "score2": 50,
+            "score3": 50,
+            "score4": 50,
+            "score5": 50
+        }
+
 def main():
     st.title("AI統合型 認知特性テスト システム")
     st.markdown("---")
     
-    # サイドバーでモード切替
     st.sidebar.header("メニュー")
     mode = st.sidebar.selectbox("画面モード切替", ["📝 応募者用入力画面", "📊 管理・閲覧・削除画面"])
     
@@ -94,7 +162,6 @@ def main():
     if mode == "📝 応募者用入力画面":
         st.subheader("📝 認知特性テスト 回答フォーム")
         
-        # 普遍的な固定テーマの案内文
         st.markdown(
             """
             ### 📌 【テストの目的とテーマについて】
@@ -120,22 +187,25 @@ def main():
                 elif not input_answer.strip():
                     st.warning("解答欄に内容を入力してください。")
                 else:
+                    with st.spinner("🤖 AIが解答を分析し、特性とスコアを自動生成しています..."):
+                        ai_result = analyze_answer_with_ai(input_answer.strip())
+                        
                     # スプレッドシートの列構成（ID, 氏名, 解答, メイン特性, サブ特性, メモ, スコア1〜5）
                     row_data = [
                         "",
                         input_name.strip(),
                         input_answer.strip(),
-                        "",
-                        "",
-                        "",
-                        "0",
-                        "0",
-                        "0",
-                        "0",
-                        "0"
+                        ai_result.get("main_trait", ""),
+                        ai_result.get("sub_trait", ""),
+                        ai_result.get("memo", ""),
+                        str(ai_result.get("score1", 50)),
+                        str(ai_result.get("score2", 50)),
+                        str(ai_result.get("score3", 50)),
+                        str(ai_result.get("score4", 50)),
+                        str(ai_result.get("score5", 50))
                     ]
                     if append_row_to_sheet(row_data):
-                        st.success("🎉 テストの回答を正常に提出しました！ご協力ありがとうございました。")
+                        st.success("🎉 テストの回答を正常に提出し、AIによる自動分析を完了しました！ご協力ありがとうございました。")
                         st.markdown("ウィンドウを閉じていただいて構いません。")
                         st.balloons()
 
@@ -164,7 +234,7 @@ def main():
                     row_data = df.loc[selected_row]
                     col1, col2 = st.columns(2)
                     with col1:
-                        st.write("#### 👤 受検者情報・解答")
+                        st.write("#### 👤 受検者情報・解答・AI所見")
                         for col_name in df.columns[:6]:
                             st.metric(label=col_name, value=str(row_data.get(col_name, "-")))
                         
@@ -181,7 +251,7 @@ def main():
                         
                         score_cols = [c for c in df.columns if c in ["論理・合理性", "直観・洞察", "目的遂行力", "対人関係", "柔軟・適応力"]]
                         if not score_cols and len(df.columns) >= 11:
-                            score_cols = df.columns[6:11]
+                            score_cols = df.columns
                         
                         scores = []
                         categories = []
@@ -212,7 +282,7 @@ def main():
                             )
                             st.plotly_chart(fig, use_container_width=True)
                         else:
-                            st.info("※ スコアの数値が入力されていないためチャートを表示できません。（スプレッドシート側でスコアを設定してください）")
+                            st.info("※ スコアの数値が入力されていないためチャートを表示できません。")
                         
                         st.write("#### 📄 詳細データ (JSON)")
                         st.json(row_data.to_dict())
@@ -223,7 +293,7 @@ def main():
                     if st.button("🔥 すべてのデータを一括クリアする", type="primary"):
                         if clear_all_data():
                             st.success("すべてのデータをクリアしました！")
-                            st.cache_resource.clear()
+                            st.cache_resource.core.clear()
                             st.rerun()
         elif input_pass != "":
             st.error("パスワードが間違っています。")
