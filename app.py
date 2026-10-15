@@ -1,6 +1,7 @@
 import streamlit as st
 import gspread
 from google.oauth2.service_account import Credentials
+import json
 
 # ページ設定
 st.set_page_config(page_title="AI統合型 認知特性テスト - 管理画面", layout="wide")
@@ -15,12 +16,19 @@ def fetch_from_spreadsheet():
             "https://www.googleapis.com/auth/drive"
         ]
         
-        # StreamlitのSecretsから認証情報を取得
-        if "gcp_service_account" in st.secrets:
+        # StreamlitのSecretsから認証情報を取得（gcp_credentialsに対応）
+        if "gcp_credentials" in st.secrets:
+            raw_creds = st.secrets["gcp_credentials"]
+            if isinstance(raw_creds, str):
+                creds_dict = json.loads(raw_creds)
+            else:
+                creds_dict = dict(raw_creds)
+            creds = Credentials.from_service_account_info(creds_dict, scopes=scopes)
+        elif "gcp_service_account" in st.secrets:
             creds_dict = dict(st.secrets["gcp_service_account"])
             creds = Credentials.from_service_account_info(creds_dict, scopes=scopes)
         else:
-            st.error("Streamlit Secretsに 'gcp_service_account' が設定されていません。")
+            st.error("Streamlit Secretsに認証情報（gcp_credentials）が設定されていません。")
             return []
             
         client = gspread.authorize(creds)
