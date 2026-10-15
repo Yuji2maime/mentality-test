@@ -2,83 +2,95 @@ import streamlit as st
 import gspread
 from google.oauth2.service_account import Credentials
 import json
+import pandas as pd
 
-st.set_page_config(page_title="AI統合型 認知特性テスト - 接続テスト画面", layout="wide")
+st.set_page_config(
+    page_title="AI統合型 認知特性テスト - 管理画面", 
+    layout="wide"
+)
 
-# 正しいスプレッドシートIDに修正済み
 TARGET_SPREADSHEET_ID = "1hkFRa9v6wbGqmT1RAKvm9EJhuEIRS-R9YAELThPJRW0"
 
-def fetch_from_spreadsheet():
+@st.cache_resource
+py_client = None
+
+def get_gspread_client():
+    scopes = [
+        "https://www.googleapis.com/auth/spreadsheets",
+        "https://www.googleapis.com/auth/drive"
+    ]
+    raw_creds = st.secrets["gcp_credentials"]
+    if isinstance(raw_creds, str):
+        creds_dict = json.loads(raw_creds)
+    else:
+        creds_dict = dict(raw_creds)
+    creds = Credentials.from_service_account_info(creds_dict, scopes=scopes)
+    return gspread.authorize(creds)
+
+def load_data():
     try:
-        st.write("--- 接続テスト開始 ---")
-        
-        scopes = [
-            "https://www.googleapis.com/auth/spreadsheets",
-            "https://www.googleapis.com/auth/drive"
-        ]
-        
-        st.write("1. Streamlit Secretsから認証情報を取得しています...")
-        if "gcp_credentials" in st.secrets:
-            raw_creds = st.secrets["gcp_credentials"]
-            if isinstance(raw_creds, str):
-                creds_dict = json.loads(raw_creds)
-            else:
-                creds_dict = dict(raw_creds)
-            creds = Credentials.from_service_account_info(creds_dict, scopes=scopes)
-            st.write("-> 【成功】認証情報のパースが完了しました。")
-        else:
-            st.error("【エラー】gcp_credentials が見つかりません。")
-            return []
-            
-        st.write("2. gspreadクライアントの認可を行っています...")
-        client = gspread.authorize(creds)
-        st.write("-> 【成功】クライアントの認可が完了しました。")
-        
-        st.write("3. スプレッドシートを開いています...")
+        client = get_gspread_client()
         spreadsheet = client.open_by_key(TARGET_SPREADSHEET_ID.strip())
-        st.write("-> 【成功】スプレッドシートを開くことができました！")
-        
-        st.write("4. ワークシートを取得しています...")
         sheet = spreadsheet.get_worksheet(0)
-        st.write("-> 【成功】ワークシートを取得しました。")
-        
-        st.write("5. 行データをすべて取得しています...")
         rows = sheet.get_all_values()
-        st.write(f"-> 【成功】全 {len(rows)} 行のデータを取得しました！")
         
-        if len(rows) <= 1:
-            return []
+        if not rows or len(rows) <= 1:
+            return pd.DataFrame()
             
-        data_rows = rows[1:]
-        records = []
-        for r in data_rows:
-            padded = list(r) + [""] * max(0, 20 - len(r))
-            record = {
-                "id": padded[0],
-                "name": padded[1],
-                "main_func": padded[2],
-                "sub_func": padded[3],
-                "memo": padded[4],
-                "scores": []
-            }
-            for val in padded[5:10]:
-                try:
-                    record["scores"].append(float(val) if val != "" else 0.0)
-                except ValueError:
-                    record["scores"].append(0.0)
-            records.append(record)
-        return records
+        header = rows[0]
+        data = rows[1:]
+        df = pd.DataFrame(data, columns=header[:len(data[0])])
+        return df
     except Exception as e:
-        st.error(f"【詳細エラー】以下の箇所で例外が発生しました: {e}")
-        return []
+        st.error(f"データの読み込み中にエラーが発生しました: {e}")
+        return pd.DataFrame()
 
 def main():
-    st.title("AI統合型 認知特性テスト - 接続テスト画面")
-    records = fetch_from_spreadsheet()
-    if records:
-        st.success(f"🎉 データの読み込みに完全成功しました！（計 {len(records)} 件）")
-        for rec in records:
-            st.write(f"名前: **{rec['name']}** (ID: {rec['id']})")
+    st.title("AI統合型 認知特性テスト - 管理画面")
+    st.markdown("---")
+    
+    # サイドバー
+    st.sidebar.header("メニュー")
+    menu = st.sidebar.selectbox("表示モード", ["受検者データ一覧", "新規データ登録・編集"])
+    
+    if st.sidebar.button("🔄 データを再読み込み"):
+        st.cache_resource.clear()
+        st.rerun()
+
+    # データ読み込み
+    df = load_data()
+
+    if menu == "受検者データ一覧":
+        st.subheader("📋 登録済み受検者データ一覧")
+        
+        if df.empty:
+            st.info("現在、スプレッドシートにデータが登録されていません。2行目以降にデータを入力してください。")
+        else:
+            st.success(f"合計 {len(df)} 件のデータを取得しました。")
+            # テーブル（データフレーム）として綺麗に表示
+            st.dataframe(df, use_container_width=True)
+            
+            # 詳細確認セクション
+            st.markdown("### 🔍 個別詳細ビュー")
+            selected_row = st.selectbox("確認する受検者を選択", df.index, format_func=lambda x: f"{df.loc[x, '氏名'] if '氏名' in df.columns else f'行 {x+1}'}")
+            
+            if selected_row is not None and not df.empty:
+                row_data = df.loc[selected_row]
+                col1, col2 = st.columns(2)
+                with col1:
+                    for col_name in df.columns[:5]:
+                        st.metric(label=col_name, value=row_data.get(col_name, "-"))
+                with col2:
+                    st.write("#### 📊 スコア・詳細情報")
+                    st.json(row_data.to_dict())
+
+    elif menu == "新規データ登録・編集":
+        st.subheader("✍️ データ管理について")
+        st.info("現在はスプレッドシート（Googleスプレッドシート）を直接編集してデータを追加・更新する運用になっています。スプレッドシート側でデータを編集後、左側メニューの「データを再読み込み」ボタンを押してください。")
+        
+        if not df.empty:
+            st.write("現在のスプレッドシート内容プレビュー:")
+            st.dataframe(df, use_container_width=True)
 
 if __name__ == "__main__":
     main()
