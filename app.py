@@ -3,9 +3,10 @@ import gspread
 from google.oauth2.service_account import Credentials
 import json
 
-st.set_page_config(page_title="AI統合型 認知特性テスト - デバッグ画面", layout="wide")
+st.set_page_config(page_title="AI統合型 認知特性テスト - 接続テスト画面", layout="wide")
 
-TARGET_SPREADSHEET_ID = "1hkFRa9v6wbGqmT1RAKvm9EJhuEiR9-R9YAELThPJRW0"
+# 正しいスプレッドシートIDに修正済み
+TARGET_SPREADSHEET_ID = "1hkFRa9v6wbGqmT1RAKvm9EJhuEIRS-R9YAELThPJRW0"
 
 def fetch_from_spreadsheet():
     try:
@@ -33,7 +34,7 @@ def fetch_from_spreadsheet():
         client = gspread.authorize(creds)
         st.write("-> 【成功】クライアントの認可が完了しました。")
         
-        st.write(f"3. スプレッドシート（ID: {TARGET_SPREADSHEET_ID}）を開いています...")
+        st.write("3. スプレッドシートを開いています...")
         spreadsheet = client.open_by_key(TARGET_SPREADSHEET_ID.strip())
         st.write("-> 【成功】スプレッドシートを開くことができました！")
         
