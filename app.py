@@ -81,7 +81,7 @@ def clear_all_data():
         sheet = spreadsheet.get_worksheet(0)
         rows = sheet.get_all_values()
         if len(rows) > 1:
-            sheet.batch_clear([f"A2:Z{len(rows)}"]}
+            sheet.batch_clear([f"A2:Z{len(rows)}"])
         return True
     except Exception as e:
         st.error(f"一括クリア中にエラーが発生しました: {e}")
@@ -92,7 +92,6 @@ def analyze_answer_with_ai(answer_text):
     応募者の解答をGemini APIで自動分析し、特性・メモ・5軸スコアを算出する
     """
     try:
-        # モデル名を最新の gemini-2.5-flash に変更
         model = genai.GenerativeModel("gemini-2.5-flash")
         prompt = f"""
 あなたは労働管理・組織人事の専門家であり、AI認知特性アナリストです。
