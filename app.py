@@ -13,7 +13,7 @@ st.set_page_config(
 
 TARGET_SPREADSHEET_ID = "1hkFRa9v6wbGqmT1RAKvm9EJhuEIRS-R9YAELThPJRW0"
 
-# Gemini APIの設定（最新モデル gemini-3.8-flash を指定）
+# Gemini APIの設定（最新・安定モデル gemini-2.0-flash を指定）
 try:
     if "GEMINI_API_KEY" in st.secrets:
         genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
@@ -92,8 +92,7 @@ def analyze_answer_with_ai(answer_text):
     応募者の解答をGemini APIで自動分析し、特性・メモ・5軸スコアを算出する
     """
     try:
-        # モデル名を最新の gemini-3.8-flash に変更
-        model = genai.GenerativeModel("gemini-3.8-flash")
+        model = genai.GenerativeModel("gemini-2.0-flash")
         prompt = f"""
 あなたは労働管理・組織人事の専門家であり、AI認知特性アナリストです。
 以下の応募者の解答テキストを分析し、JSON形式で以下の項目を評価・算出してください。
@@ -191,7 +190,6 @@ def main():
                     with st.spinner("🤖 AIが解答を分析し、特性とスコアを自動生成しています..."):
                         ai_result = analyze_answer_with_ai(input_answer.strip())
                         
-                    # スプレッドシートの列順（ID, 氏名, メイン特性, サブ特性,メモ, スコア1〜5）に完全に一致させる
                     row_data = [
                         "",
                         input_name.strip(),
