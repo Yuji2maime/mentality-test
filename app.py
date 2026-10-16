@@ -13,7 +13,7 @@ st.set_page_config(
 
 TARGET_SPREADSHEET_ID = "1hkFRa9v6wbGqmT1RAKvm9EJhuEIRS-R9YAELThPJRW0"
 
-# Gemini APIの設定
+# Gemini APIの設定（最新モデル gemini-2.5-flash を指定）
 try:
     if "GEMINI_API_KEY" in st.secrets:
         genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
@@ -81,7 +81,7 @@ def clear_all_data():
         sheet = spreadsheet.get_worksheet(0)
         rows = sheet.get_all_values()
         if len(rows) > 1:
-            sheet.batch_clear([f"A2:Z{len(rows)}"])
+            sheet.batch_clear([f"A2:Z{len(rows)}"]}
         return True
     except Exception as e:
         st.error(f"一括クリア中にエラーが発生しました: {e}")
@@ -92,7 +92,8 @@ def analyze_answer_with_ai(answer_text):
     応募者の解答をGemini APIで自動分析し、特性・メモ・5軸スコアを算出する
     """
     try:
-        model = genai.GenerativeModel("gemini-1.5-flash")
+        # モデル名を最新の gemini-2.5-flash に変更
+        model = genai.GenerativeModel("gemini-2.5-flash")
         prompt = f"""
 あなたは労働管理・組織人事の専門家であり、AI認知特性アナリストです。
 以下の応募者の解答テキストを分析し、JSON形式で以下の項目を評価・算出してください。
@@ -105,8 +106,8 @@ def analyze_answer_with_ai(answer_text):
 5. 柔軟・適応力 (score5)
 
 その他の項目：
-- main_trait: メイン特性（例：「Te-Ni」「知性の盾系」など、思考スタイルの傾向を表す簡潔な分類）
-- sub_trait: サブ特性（例：「外向思考(Te)」など）
+- main_trait: メイン特性（例：「Te-Ni」「知性の盾系」「論理推進型」など、思考スタイルの傾向を表す簡潔な分類）
+- sub_trait: サブ特性（例：「外向思考(Te)」「内向直観(Ni)」など）
 - memo: メモ・所見（応募者の強みや面接・労務管理で注目すべきポイントのAI分析コメント、150〜200文字程度）
 
 応募者の解答:
@@ -140,7 +141,7 @@ def analyze_answer_with_ai(answer_text):
         return {
             "main_trait": "標準特性",
             "sub_trait": "バランス型",
-            "memo": f"AI自動分析時にエラーが発生しました: {str(e)}",
+            "memo": f"AI自動分析エラー: {str(e)}",
             "score1": 50,
             "score2": 50,
             "score3": 50,
@@ -190,11 +191,10 @@ def main():
                     with st.spinner("🤖 AIが解答を分析し、特性とスコアを自動生成しています..."):
                         ai_result = analyze_answer_with_ai(input_answer.strip())
                         
-                    # スプレッドシートの列構成（ID, 氏名, 解答, メイン特性, サブ特性, メモ, スコア1〜5）
+                    # スプレッドシートの列順（ID, 氏名, メイン特性, サブ特性, メモ, スコア1〜5）に完全に一致させる
                     row_data = [
                         "",
                         input_name.strip(),
-                        input_answer.strip(),
                         ai_result.get("main_trait", ""),
                         ai_result.get("sub_trait", ""),
                         ai_result.get("memo", ""),
@@ -234,8 +234,8 @@ def main():
                     row_data = df.loc[selected_row]
                     col1, col2 = st.columns(2)
                     with col1:
-                        st.write("#### 👤 受検者情報・解答・AI所見")
-                        for col_name in df.columns[:6]:
+                        st.write("#### 👤 受検者情報・AI所見")
+                        for col_name in df.columns[:5]:
                             st.metric(label=col_name, value=str(row_data.get(col_name, "-")))
                         
                         st.markdown("---")
@@ -250,7 +250,7 @@ def main():
                         st.write("#### 📊 スコア・レーダーチャート")
                         
                         score_cols = [c for c in df.columns if c in ["論理・合理性", "直観・洞察", "目的遂行力", "対人関係", "柔軟・適応力"]]
-                        if not score_cols and len(df.columns) >= 11:
+                        if not score_cols and len(df.columns) >= 10:
                             score_cols = df.columns
                         
                         scores = []
@@ -293,7 +293,7 @@ def main():
                     if st.button("🔥 すべてのデータを一括クリアする", type="primary"):
                         if clear_all_data():
                             st.success("すべてのデータをクリアしました！")
-                            st.cache_resource.core.clear()
+                            st.cache_resource.clear()
                             st.rerun()
         elif input_pass != "":
             st.error("パスワードが間違っています。")
