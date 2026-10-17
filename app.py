@@ -91,10 +91,7 @@ def analyze_answer_with_ai(answer_text):
     """
     応募者の解答をGemini APIで自動分析し、特性・メモ・5軸スコアを算出する
     """
-    try:
-        # 最新の安定版モデル gemini-2.0-flash を使用
-        model = genai.GenerativeModel("gemini-2.0-flash")
-        prompt = f"""
+    prompt = f"""
 あなたは労働管理・組織人事の専門家であり、AI認知特性アナリストです。
 以下の応募者の解答テキストを分析し、JSON形式で以下の項目を評価・算出してください。
 
@@ -125,8 +122,36 @@ def analyze_answer_with_ai(answer_text):
   "score5": 85
 }}
 """
-        response = model.generate_content(prompt)
-        text = response.text.strip()
+    # 候補モデルのリスト（確実に存在するモデル順）
+    candidate_models = ["gemini-1.5-flash", "gemini-1.5-pro", "gemini-pro"]
+    response_text = ""
+    last_error = ""
+
+    for m_name in candidate_models:
+        try:
+            model = genai.GenerativeModel(m_name)
+            response = model.generate_content(prompt)
+            response_text = response.text.strip()
+            if response_text:
+                break
+        except Exception as e:
+            last_error = str(e)
+            continue
+
+    if not response_text:
+        return {
+            "main_trait": "標準特性",
+            "sub_trait": "バランス型",
+            "memo": f"AI自動分析エラー: {last_error}",
+            "score1": 50,
+            "score2": 50,
+            "score3": 50,
+            "score4": 50,
+            "score5": 50
+        }
+
+    try:
+        text = response_text
         if text.startswith("```json"):
             text = text[7:]
         if text.startswith("```"):
@@ -141,7 +166,7 @@ def analyze_answer_with_ai(answer_text):
         return {
             "main_trait": "標準特性",
             "sub_trait": "バランス型",
-            "memo": f"AI自動分析エラー: {str(e)}",
+            "memo": f"JSON解析エラー: {str(e)}",
             "score1": 50,
             "score2": 50,
             "score3": 50,
