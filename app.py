@@ -271,8 +271,14 @@ def main():
                     col1, col2 = st.columns(2)
                     with col1:
                         st.write("#### 👤 受検者情報・AI所見")
-                        for col_name in df.columns[:5]:
+                        # 最初の4つ（ID, 氏名, メイン特性, サブ特性）をmetric表示
+                        for col_name in df.columns[:4]:
                             st.metric(label=col_name, value=str(row_data.get(col_name, "-")))
+                        
+                        # 5番目の「メモ」は長文なので専用のインフォボックスで全文表示する
+                        memo_col = df.columns[4] if len(df.columns) > 4 else "メモ"
+                        st.markdown(f"**📝 {memo_col}（AI分析コメント）**")
+                        st.info(str(row_data.get(memo_col, "-")))
                         
                         st.markdown("---")
                         if st.button("🗑️ この受検者データを削除する", type="secondary"):
