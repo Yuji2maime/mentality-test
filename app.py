@@ -90,6 +90,7 @@ def clear_all_data():
 def analyze_answer_with_ai(answer_text):
     """
     応募者の解答をGemini APIで自動分析し、特性・メモ・5軸スコアを算出する
+    （利用可能なモデルをAPIから動的に検索して呼び出す方式）
     """
     prompt = f"""
 あなたは労働管理・組織人事の専門家であり、AI認知特性アナリストです。
@@ -122,20 +123,33 @@ def analyze_answer_with_ai(answer_text):
   "score5": 85
 }}
 """
-    # 候補モデルのリスト（確実に存在するモデル順）
-    candidate_models = ["gemini-1.5-flash", "gemini-1.5-pro", "gemini-pro"]
     response_text = ""
     last_error = ""
 
-    for m_name in candidate_models:
+    # APIから利用可能なモデル一覧を動的に取得し、generateContent可能なモデルを探す
+    available_models = []
+    try:
+        for m in genai.list_models():
+            if 'generateContent' in m.supported_generation_methods:
+                available_models.append(m.name)
+    except Exception as e:
+        last_error = f"モデル一覧取得失敗: {str(e)}"
+
+    # 利用可能なモデルが見つからなかった場合の固定フォールバックリスト
+    if not available_models:
+        available_models = ["models/gemini-2.0-flash", "models/gemini-1.5-flash", "models/gemini-1.5-pro"]
+
+    # 発見されたモデルを順番に試行
+    for m_name in available_models:
         try:
             model = genai.GenerativeModel(m_name)
             response = model.generate_content(prompt)
-            response_text = response.text.strip()
-            if response_text:
-                break
+            if response and response.text:
+                response_text = response.text.strip()
+                if response_text:
+                    break
         except Exception as e:
-            last_error = str(e)
+            last_error = f"モデル({m_name})試行エラー: {str(e)}"
             continue
 
     if not response_text:
