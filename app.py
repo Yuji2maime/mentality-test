@@ -92,22 +92,16 @@ def extract_and_parse_json(text):
     """
     AIの返答テキストから最初に見つかる有効なJSONオブジェクトを確実に抽出・辞書化する
     """
-    # ```json ... ``` の囲みがあれば除去
     cleaned_text = re.sub(r'```(?:json)?', '', text).strip()
-    
-    # 最初に出てくる '{' を探す
     start_idx = cleaned_text.find('{')
     if start_idx != -1:
         json_candidate = cleaned_text[start_idx:]
         try:
-            # 最初の有効なJSONオブジェクトのみを解析（Extra dataを自動無視）
             decoder = json.JSONDecoder()
             obj, _ = decoder.raw_decode(json_candidate)
             return obj
         except Exception:
             pass
-            
-    # 全体でのパース試行（フォールバック）
     return json.loads(cleaned_text)
 
 def analyze_answer_with_ai(answer_text):
@@ -240,8 +234,12 @@ def main():
                     with st.spinner("🤖 AIが解答を分析し、特性とスコアを自動生成しています..."):
                         ai_result = analyze_answer_with_ai(input_answer.strip())
                         
+                    # 既存のデータ数を取得して自動連番ID（1, 2, 3...）を採番
+                    df_current = load_data()
+                    next_id = str(len(df_current) + 1)
+                        
                     row_data = [
-                        "",
+                        next_id,
                         input_name.strip(),
                         ai_result.get("main_trait", ""),
                         ai_result.get("sub_trait", ""),
@@ -273,21 +271,28 @@ def main():
                 st.info("現在、スプレッドシートにデータが登録されていません。")
             else:
                 st.success(f"合計 {len(df)} 件のデータを取得しました。")
-                st.dataframe(df, use_container_width=True)
+                # hide_index=True で左端の 0,1,2... を非表示にし、ID列を綺麗に表示
+                st.dataframe(df, use_container_width=True, hide_index=True)
                 
                 st.markdown("### 🔍 個別詳細ビュー & レーダーチャート & 削除")
-                selected_row = st.selectbox("確認・削除する受検者を選択", df.index, format_func=lambda x: f"{df.loc[x, '氏名'] if '氏名' in df.columns else f'行 {x+1}'}")
+                selected_row = st.selectbox("確認・削除する受検者を選択", df.index, format_func=lambda x: f"ID: {df.loc[x, 'ID'] if 'ID' in df.columns and df.loc[x, 'ID'] != '' else x+1} - {df.loc[x, '氏名'] if '氏名' in df.columns else ''}")
                 
                 if selected_row is not None and not df.empty:
                     row_data = df.loc[selected_row]
                     col1, col2 = st.columns(2)
                     with col1:
                         st.write("#### 👤 受検者情報・AI所見")
-                        # 最初の4つ（ID, 氏名, メイン特性, サブ特性）をmetric表示
-                        for col_name in df.columns[:4]:
-                            st.metric(label=col_name, value=str(row_data.get(col_name, "-")))
                         
-                        # 5番目の「メモ」は長文なので専用のインフォボックスで全文表示する
+                        # IDが空欄の場合はインデックス+1を補完表示
+                        display_id = str(row_data.get("ID", ""))
+                        if not display_id or display_id == "-":
+                            display_id = str(selected_row + 1)
+                            
+                        st.metric(label="ID", value=display_id)
+                        st.metric(label="氏名", value=str(row_data.get("氏名", "-")))
+                        st.metric(label="メイン特性", value=str(row_data.get("メイン特性", "-")))
+                        st.metric(label="サブ特性", value=str(row_data.get("サブ特性", "-")))
+                        
                         memo_col = df.columns[4] if len(df.columns) > 4 else "メモ"
                         st.markdown(f"**📝 {memo_col}（AI分析コメント）**")
                         st.info(str(row_data.get(memo_col, "-")))
@@ -339,7 +344,11 @@ def main():
                             st.info("※ スコアの数値が入力されていないためチャートを表示できません。")
                         
                         st.write("#### 📄 詳細データ (JSON)")
-                        st.json(row_data.to_dict())
+                        # 表示用辞書データのID補完
+                        dict_data = row_data.to_dict()
+                        if not dict_data.get("ID"):
+                            dict_data["ID"] = display_id
+                        st.json(dict_data)
                 
                 st.markdown("---")
                 with st.expander("⚙️ 高度なデータ管理（一括削除）"):
