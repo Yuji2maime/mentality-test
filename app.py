@@ -2,6 +2,7 @@ import streamlit as st
 import gspread
 from google.oauth2.service_account import Credentials
 import json
+import re
 import pandas as pd
 import plotly.graph_objects as go
 import google.generativeai as genai
@@ -23,8 +24,8 @@ except Exception:
 @st.cache_resource
 def get_gspread_client():
     scopes = [
-        "https://www.googleapis.com/auth/spreadsheets",
-        "https://www.googleapis.com/auth/drive"
+        "[https://www.googleapis.com/auth/spreadsheets](https://www.googleapis.com/auth/spreadsheets)",
+        "[https://www.googleapis.com/auth/drive](https://www.googleapis.com/auth/drive)"
     ]
     raw_creds = st.secrets["gcp_credentials"]
     if isinstance(raw_creds, str):
@@ -87,10 +88,18 @@ def clear_all_data():
         st.error(f"一括クリア中にエラーが発生しました: {e}")
         return False
 
+def extract_json_from_text(text):
+    """
+    AIの返答テキストから最初の { から 最後の } までを正規表現で強固に抽出する
+    """
+    match = re.search(r'\{.*\}', text, re.DOTALL)
+    if match:
+        return match.group(0)
+    return text
+
 def analyze_answer_with_ai(answer_text):
     """
     応募者の解答をGemini APIで自動分析し、特性・メモ・5軸スコアを算出する
-    （利用可能なモデルをAPIから動的に検索して呼び出す方式）
     """
     prompt = f"""
 あなたは労働管理・組織人事の専門家であり、AI認知特性アナリストです。
@@ -111,7 +120,7 @@ def analyze_answer_with_ai(answer_text):
 応募者の解答:
 {answer_text}
 
-出力は必ず以下の純粋なJSONフォーマットのみで行ってください（Markdownの ```json や ``` などの記号は一切含めず、中括弧 {{ }} から始まる文字列のみを出力してください）：
+出力形式（必ず以下のJSONのみを出力してください）：
 {{
   "main_trait": "...",
   "sub_trait": "...",
@@ -126,7 +135,6 @@ def analyze_answer_with_ai(answer_text):
     response_text = ""
     last_error = ""
 
-    # APIから利用可能なモデル一覧を動的に取得し、generateContent可能なモデルを探す
     available_models = []
     try:
         for m in genai.list_models():
@@ -135,11 +143,9 @@ def analyze_answer_with_ai(answer_text):
     except Exception as e:
         last_error = f"モデル一覧取得失敗: {str(e)}"
 
-    # 利用可能なモデルが見つからなかった場合の固定フォールバックリスト
     if not available_models:
         available_models = ["models/gemini-2.0-flash", "models/gemini-1.5-flash", "models/gemini-1.5-pro"]
 
-    # 発見されたモデルを順番に試行
     for m_name in available_models:
         try:
             model = genai.GenerativeModel(m_name)
@@ -165,16 +171,8 @@ def analyze_answer_with_ai(answer_text):
         }
 
     try:
-        text = response_text
-        if text.startswith("```json"):
-            text = text[7:]
-        if text.startswith("```"):
-            text = text[3:]
-        if text.endswith("```"):
-            text = text[:-3]
-        text = text.strip()
-        
-        data = json.loads(text)
+        json_str = extract_json_from_text(response_text)
+        data = json.loads(json_str)
         return data
     except Exception as e:
         return {
