@@ -48,6 +48,14 @@ def load_data():
         header = rows[0]
         data = rows[1:]
         df = pd.DataFrame(data, columns=header[:len(data[0])])
+        
+        # ID列が空欄の場合、1からの連番で自動補完する
+        if "ID" in df.columns:
+            for idx in df.index:
+                val = str(df.loc[idx, "ID"]).strip()
+                if not val or val == "-":
+                    df.loc[idx, "ID"] = str(idx + 1)
+                    
         return df
     except Exception as e:
         st.error(f"データの読み込み中にエラーが発生しました: {e}")
@@ -275,7 +283,7 @@ def main():
                 st.dataframe(df, use_container_width=True, hide_index=True)
                 
                 st.markdown("### 🔍 個別詳細ビュー & レーダーチャート & 削除")
-                selected_row = st.selectbox("確認・削除する受検者を選択", df.index, format_func=lambda x: f"ID: {df.loc[x, 'ID'] if 'ID' in df.columns and df.loc[x, 'ID'] != '' else x+1} - {df.loc[x, '氏名'] if '氏名' in df.columns else ''}")
+                selected_row = st.selectbox("確認・削除する受検者を選択", df.index, format_func=lambda x: f"ID: {df.loc[x, 'ID']} - {df.loc[x, '氏名'] if '氏名' in df.columns else ''}")
                 
                 if selected_row is not None and not df.empty:
                     row_data = df.loc[selected_row]
@@ -283,10 +291,7 @@ def main():
                     with col1:
                         st.write("#### 👤 受検者情報・AI所見")
                         
-                        # IDが空欄の場合はインデックス+1を補完表示
-                        display_id = str(row_data.get("ID", ""))
-                        if not display_id or display_id == "-":
-                            display_id = str(selected_row + 1)
+                        display_id = str(row_data.get("ID", selected_row + 1))
                             
                         st.metric(label="ID", value=display_id)
                         st.metric(label="氏名", value=str(row_data.get("氏名", "-")))
@@ -344,10 +349,8 @@ def main():
                             st.info("※ スコアの数値が入力されていないためチャートを表示できません。")
                         
                         st.write("#### 📄 詳細データ (JSON)")
-                        # 表示用辞書データのID補完
                         dict_data = row_data.to_dict()
-                        if not dict_data.get("ID"):
-                            dict_data["ID"] = display_id
+                        dict_data["ID"] = display_id
                         st.json(dict_data)
                 
                 st.markdown("---")
