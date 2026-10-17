@@ -88,14 +88,27 @@ def clear_all_data():
         st.error(f"一括クリア中にエラーが発生しました: {e}")
         return False
 
-def extract_json_from_text(text):
+def extract_and_parse_json(text):
     """
-    AIの返答テキストから最初の { から 最後の } までを正規表現で強固に抽出する
+    AIの返答テキストから最初に見つかる有効なJSONオブジェクトを確実に抽出・辞書化する
     """
-    match = re.search(r'\{.*\}', text, re.DOTALL)
-    if match:
-        return match.group(0)
-    return text
+    # ```json ... ``` の囲みがあれば除去
+    cleaned_text = re.sub(r'```(?:json)?', '', text).strip()
+    
+    # 最初に出てくる '{' を探す
+    start_idx = cleaned_text.find('{')
+    if start_idx != -1:
+        json_candidate = cleaned_text[start_idx:]
+        try:
+            # 最初の有効なJSONオブジェクトのみを解析（Extra dataを自動無視）
+            decoder = json.JSONDecoder()
+            obj, _ = decoder.raw_decode(json_candidate)
+            return obj
+        except Exception:
+            pass
+            
+    # 全体でのパース試行（フォールバック）
+    return json.loads(cleaned_text)
 
 def analyze_answer_with_ai(answer_text):
     """
@@ -120,7 +133,7 @@ def analyze_answer_with_ai(answer_text):
 応募者の解答:
 {answer_text}
 
-出力形式（必ず以下のJSONのみを出力してください）：
+出力形式（必ず以下のJSONのみを出力し、解説文や思考プロセスは一切含めないでください）：
 {{
   "main_trait": "...",
   "sub_trait": "...",
@@ -171,8 +184,7 @@ def analyze_answer_with_ai(answer_text):
         }
 
     try:
-        json_str = extract_json_from_text(response_text)
-        data = json.loads(json_str)
+        data = extract_and_parse_json(response_text)
         return data
     except Exception as e:
         return {
@@ -293,7 +305,7 @@ def main():
                         
                         score_cols = [c for c in df.columns if c in ["論理・合理性", "直観・洞察", "目的遂行力", "対人関係", "柔軟・適応力"]]
                         if not score_cols and len(df.columns) >= 10:
-                            score_cols = df.columns[5:10]
+                            score_cols = df.columns
                         
                         scores = []
                         categories = []
