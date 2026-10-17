@@ -24,8 +24,8 @@ except Exception:
 @st.cache_resource
 def get_gspread_client():
     scopes = [
-        "[https://www.googleapis.com/auth/spreadsheets](https://www.googleapis.com/auth/spreadsheets)",
-        "[https://www.googleapis.com/auth/drive](https://www.googleapis.com/auth/drive)"
+        "https://www.googleapis.com/auth/spreadsheets",
+        "https://www.googleapis.com/auth/drive"
     ]
     raw_creds = st.secrets["gcp_credentials"]
     if isinstance(raw_creds, str):
@@ -287,7 +287,7 @@ def main():
                         
                         score_cols = [c for c in df.columns if c in ["論理・合理性", "直観・洞察", "目的遂行力", "対人関係", "柔軟・適応力"]]
                         if not score_cols and len(df.columns) >= 10:
-                            score_cols = df.columns
+                            score_cols = df.columns[5:10]
                         
                         scores = []
                         categories = []
