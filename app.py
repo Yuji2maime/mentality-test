@@ -1,19 +1,26 @@
 import streamlit as st
 import time
+from supabase import create_client, Client
 
 # ページ設定
 st.set_page_config(page_title="思考・表現力セッション（当日用）", layout="wide")
 
 # ==========================================
-# 🔑 管理者設定
+# 🔑 Supabase & 管理者設定
 # ==========================================
-ADMIN_PASSWORD = "19700124"  # 横山様用パスワード（他ユーザー展開時はここを変更）
+SUPABASE_URL = st.secrets.get("SUPABASE_URL", "")
+SUPABASE_KEY = st.secrets.get("SUPABASE_KEY", "")
+ADMIN_PASSWORD = st.secrets.get("ADMIN_PASSWORD", "19700124")
+
+@st.cache_resource
+def init_supabase() -> Client:
+    return create_client(SUPABASE_URL, SUPABASE_KEY)
+
+supabase = init_supabase()
 
 # セッション状態の初期化
 if "page" not in st.session_state:
     st.session_state.page = "candidate"  # "candidate" or "admin"
-if "submitted_data" not in st.session_state:
-    st.session_state.submitted_data = []
 if "admin_authenticated" not in st.session_state:
     st.session_state.admin_authenticated = False
 
@@ -49,14 +56,17 @@ if st.session_state.page == "candidate":
     with col1:
         if st.button("送信して完了する", type="primary"):
             if candidate_name.strip() and text_input.strip():
-                st.session_state.submitted_data.append({
+                # Supabaseにリアルタイム送信・保存
+                data_to_insert = {
                     "name": candidate_name,
                     "text": text_input,
-                    "timestamp": time.strftime("%Y-%m-%d %H:%M:%S"),
                     "types": [],
                     "sub_functions": [],
-                    "notes": ""
-                })
+                    "notes": "",
+                    "app_type": "today"
+                }
+                supabase.table("candidate_responses").insert(data_to_insert).execute()
+                
                 st.success("送信が完了いたしました。画面をそのままにしてお待ちください。")
                 st.balloons()
             elif not candidate_name.strip():
@@ -91,13 +101,19 @@ elif st.session_state.page == "admin":
             else:
                 st.error("パスワードが正しくありません。")
     else:
-        # 認証成功後の管理画面コンテンツ
-        if not st.session_state.submitted_data:
+        # DBから最新データをリアルタイム取得
+        response = supabase.table("candidate_responses").select("*").eq("app_type", "today").order("created_at", desc=True).execute()
+        submitted_data = response.data if response else []
+
+        if not submitted_data:
             st.info("現在、提出された当日入力データはありません。")
         else:
-            for i, data in enumerate(st.session_state.submitted_data):
-                candidate_label = data.get('name', f"応募者 #{i+1}")
-                with st.expander(f"提出データ: {candidate_label} 様（提出日時: {data['timestamp']}）", expanded=True):
+            for data in submitted_data:
+                record_id = data["id"]
+                candidate_label = data.get('name', f"応募者 #{record_id}")
+                created_at = data.get('created_at', '')[:19].replace('T', ' ')
+                
+                with st.expander(f"提出データ: {candidate_label} 様（提出日時: {created_at}）", expanded=True):
                     st.subheader(f"【応募者氏名】 {candidate_label}")
                     st.subheader("【当日記述内容】")
                     st.write(data["text"])
@@ -110,24 +126,35 @@ elif st.session_state.page == "admin":
                         selected_types = st.multiselect(
                             "主機能・認知タイプ（該当するものすべて）",
                             ["Te型（効率・構造化）", "Ti型（論理・体系化）", "Fe型（調和・関係性）", "Fi型（価値観・内省）", "Se型（現実・実行）", "Ni型（直観・本質）"],
-                            default=data["types"],
-                            key=f"types_{i}"
+                            default=data.get("types") or [],
+                            key=f"types_{record_id}"
                         )
                     with col_b:
                         selected_subs = st.multiselect(
                             "補助機能（複数認定）",
                             ["補助Te", "補助Ti", "補助Fe", "補助Fi", "補助Se", "補助Ne", "補助Si", "補助Ni"],
-                            default=data["sub_functions"],
-                            key=f"subs_{i}"
+                            default=data.get("sub_functions") or [],
+                            key=f"subs_{record_id}"
                         )
 
-                    notes = st.text_area("採用・面接評価メモ（思考の癖、リスク、面接時確認事項など）", value=data["notes"], key=f"notes_{i}")
+                    notes = st.text_area("採用・面接評価メモ（思考の癖、リスク、面接時確認事項など）", value=data.get("notes") or "", key=f"notes_{record_id}")
 
-                    if st.button("評価・メモを保存する", key=f"save_{i}"):
-                        st.session_state.submitted_data[i]["types"] = selected_types
-                        st.session_state.submitted_data[i]["sub_functions"] = selected_subs
-                        st.session_state.submitted_data[i]["notes"] = notes
-                        st.success(f"{candidate_label} 様の評価メモを保存しました。")
+                    col_save, col_del = st.columns([1, 1])
+                    with col_save:
+                        if st.button("評価・メモを保存する", key=f"save_{record_id}", type="primary"):
+                            supabase.table("candidate_responses").update({
+                                "types": selected_types,
+                                "sub_functions": selected_subs,
+                                "notes": notes
+                            }).eq("id", record_id).execute()
+                            st.success(f"{candidate_label} 様の評価メモをデータベースに保存しました。")
+                            st.rerun()
+
+                    with col_del:
+                        if st.button("🗑️ この提出データを削除する", key=f"del_{record_id}"):
+                            supabase.table("candidate_responses").delete().eq("id", record_id).execute()
+                            st.warning(f"{candidate_label} 様のデータを削除しました。")
+                            st.rerun()
 
         # ==========================================
         # 📜 管理画面フッター（免責・管理責任注記）
