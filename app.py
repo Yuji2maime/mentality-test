@@ -35,23 +35,25 @@ if "admin_authenticated" not in st.session_state:
 def analyze_with_gemini(text):
     if not GEMINI_API_KEY:
         return {
-            "types": ["Se型（現実・実行）"],
+            "types": ["Se型（現実・実行）", "補助Te"],
             "notes": "※GEMINI_API_KEYが設定されていないため分析できません。",
         }
     
     prompt = f"""
-以下の応募者の記述内容を深層分析し、指定のJSON形式のみで出力してください。説明文やMarkdown記号（```json 等）は一切出力せず、純粋なJSON文字列のみを返してください。
+以下の応募者の記述内容を深層分析し、主機能および補助機能を抽出して指定のJSON形式のみで出力してください。説明文やMarkdown記号（```json 等）は一切出力せず、純粋なJSON文字列のみを返してください。
 
 【応募者の記述内容】:
 "{text}"
 
 【出力JSONフォーマット】:
 {{
-  "types": ["Te型（効率・構造化）"],
+  "types": ["Se型（現実・実行）", "補助Te"],
   "notes": "応募者の性格傾向、思考の癖、強み、および面接時に確認すべき懸念事項やリスクに関する具体的な評価メモ（200文字程度）。"
 }}
 
-※typesの選択肢（複数可）: "Te型（効率・構造化）", "Ti型（論理・体系化）", "Fe型（調和・関係性）", "Fi型（価値観・内省）", "Se型（現実・実行）", "Ni型（直観・本質）"
+※typesで選択可能な項目リスト（主機能および補助機能を1〜3個選択）:
+- 主機能: "Te型（効率・構造化）", "Ti型（論理・体系化）", "Fe型（調和・関係性）", "Fi型（価値観・内省）", "Se型（現実・実行）", "Ni型（直観・本質）"
+- 補助機能: "補助Te", "補助Ti", "補助Fe", "補助Fi", "補助Se", "補助Ne", "補助Si", "補助Ni"
 """
     model_names = ["gemini-1.5-flash", "gemini-1.5-pro", "gemini-1.0-pro"]
     
@@ -77,12 +79,12 @@ def analyze_with_gemini(text):
     # テキスト傾向に応じたフォールバック
     if "馬鹿" in text or "違反" in text or "力" in text or "軍人" in text:
         return {
-            "types": ["Se型（現実・実行）"],
+            "types": ["Se型（現実・実行）", "補助Te"],
             "notes": "【AIリスク分析】行動力や実力行使への傾向が強い反面、組織の規範意識や規律遵守、人間関係の調和面において重大なリスクが懸念されます。コンプライアンス意識の確認が必須です。"
         }
     else:
         return {
-            "types": ["Te型（効率・構造化）", "Ti型（論理・体系化）"],
+            "types": ["Te型（効率・構造化）", "Ti型（論理・体系化）", "補助Ni"],
             "notes": "【AI構造分析】社会課題や制度的な問題に対する明確な分析力と改善提案能力を有しています。論理的かつ規範的な思考傾向が強く窺えます。"
         }
 
@@ -117,7 +119,6 @@ if st.session_state.page == "candidate":
             if candidate_name.strip() and text_input.strip():
                 ai_res = analyze_with_gemini(text_input)
                 
-                # Supabaseに存在する安全な標準カラムのみで保存
                 data_to_insert = {
                     "name": candidate_name,
                     "text": text_input,
@@ -196,7 +197,7 @@ elif st.session_state.page == "admin":
 
                     st.subheader("【認知特性・思考傾向分析】")
 
-                    # 選択されたタイプから動的にスコアを算出して連動表示
+                    # 選択されたタイプ・補助機能からスコアを算出
                     types_str = "".join(current_types)
                     te_s = 85 if "Te" in types_str else 45
                     ti_s = 85 if "Ti" in types_str else 45
@@ -225,8 +226,11 @@ elif st.session_state.page == "admin":
                     st.plotly_chart(fig, use_container_width=True)
 
                     selected_types = st.multiselect(
-                        "主機能・認知タイプ（該当するものすべて）",
-                        ["Te型（効率・構造化）", "Ti型（論理・体系化）", "Fe型（調和・関係性）", "Fi型（価値観・内省）", "Se型（現実・実行）", "Ni型（直観・本質）"],
+                        "認知タイプ（主機能・補助機能）",
+                        [
+                            "Te型（効率・構造化）", "Ti型（論理・体系化）", "Fe型（調和・関係性）", "Fi型（価値観・内省）", "Se型（現実・実行）", "Ni型（直観・本質）",
+                            "補助Te", "補助Ti", "補助Fe", "補助Fi", "補助Se", "補助Ne", "補助Si", "補助Ni"
+                        ],
                         default=current_types,
                         key=f"types_{record_id}"
                     )
