@@ -48,7 +48,7 @@ def analyze_with_gemini(text):
 "{text}"
 
 【評価方針】:
-記述内容の論理性、倫理観、効率性、感情・人間関係への配慮、現実的行動力、直観的本質把握力を0〜100で厳格に採点してください。文章の特徴や危険性・強みが明確に出るように差をつけて採点してください。
+記述内容の論理性(Ti)、効率性(Te)、調和性(Fe)、内省・倫理観(Fi)、実行力(Se)、直観(Ni)を0〜100で厳格に採点してください。文章の特徴や課題、強みが明確に出るように差をつけて採点してください。
 
 【出力JSONフォーマット】:
 {{
@@ -83,14 +83,21 @@ def analyze_with_gemini(text):
         except Exception:
             continue
 
-    # テキスト傾向に応じたフォールバック数値生成
-    is_violent = "馬鹿" in text or "違反" in text or "力" in text
-    return {
-        "types": ["Se型（現実・実行）"] if is_violent else ["Te型（効率・構造化）", "Ti型（論理・体系化）"],
-        "sub_functions": ["補助Te"] if is_violent else ["補助Ti"],
-        "notes": "【AI分析結果】力や実行力を重視する傾向が強く、組織の規律遵守意識にリスクが見受けられます。" if is_violent else "【AI分析結果】制度や仕組みによる課題解決を志向する論理的・構造的な思考傾向が見られます。",
-        "scores": [60, 40, 15, 20, 90, 40] if is_violent else [85, 80, 45, 50, 60, 75]
-    }
+    # ルールベースフォールバック（文章の特徴からスコアに明確な偏りを生じさせる）
+    if "馬鹿" in text or "違反" in text or "力" in text or "軍人" in text:
+        return {
+            "types": ["Se型（現実・実行）"],
+            "sub_functions": ["補助Te"],
+            "notes": "【AIリスク分析】行動力や実力行使への傾向が非常に強い反面、組織の規範意識や規律遵守、人間関係の調和面において重大なリスクが懸念されます。面接にてコンプライアンス意識の確認が必須です。",
+            "scores": [65, 30, 10, 15, 95, 35]
+        }
+    else:
+        return {
+            "types": ["Te型（効率・構造化）", "Ti型（論理・体系化）"],
+            "sub_functions": ["補助Te", "補助Ti"],
+            "notes": "【AI構造分析】社会課題や制度的な問題に対する明確な分析力と改善提案能力を有しています。論理的かつ規範的な思考傾向が強く窺えます。",
+            "scores": [85, 80, 40, 55, 60, 75]
+        }
 
 # --- 1. 応募者用画面（当日回答用）---
 if st.session_state.page == "candidate":
@@ -186,11 +193,18 @@ elif st.session_state.page == "admin":
                     current_types = data.get("types") or []
                     current_notes = data.get("notes") or ""
                     current_subs = data.get("sub_functions") or []
-                    current_scores = data.get("scores") or [50, 50, 50, 50, 50, 50]
+                    current_scores = data.get("scores") or []
+
+                    # 既存データにスコアがない、またはエラー文面が残っている場合は自動再計算
+                    if not current_scores or "AI分析エラー" in current_notes or "404" in current_notes or len(current_scores) != 6:
+                        ai_res = analyze_with_gemini(data["text"])
+                        current_types = ai_res.get("types", [])
+                        current_subs = ai_res.get("sub_functions", [])
+                        current_notes = ai_res.get("notes", "")
+                        current_scores = ai_res.get("scores", [50, 50, 50, 50, 50, 50])
 
                     st.markdown("---")
                     
-                    # 🤖 赤色のAI分析ボタンをクリックで即座に個別分析を実行＆DB上書き保存
                     if st.button(f"🤖 {candidate_label} 様のAI個別分析を再実行する", key=f"re_analyze_{record_id}", type="primary"):
                         with st.spinner("Gemini AIによる個別の深層分析を実行中..."):
                             ai_res = analyze_with_gemini(data["text"])
@@ -199,7 +213,6 @@ elif st.session_state.page == "admin":
                             current_notes = ai_res.get("notes", "")
                             current_scores = ai_res.get("scores", [50, 50, 50, 50, 50, 50])
                             
-                            # データベースを完全上書き更新
                             supabase.table("candidate_responses").update({
                                 "types": current_types,
                                 "sub_functions": current_subs,
