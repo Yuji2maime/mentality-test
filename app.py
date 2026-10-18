@@ -31,27 +31,46 @@ if "page" not in st.session_state:
 if "admin_authenticated" not in st.session_state:
     st.session_state.admin_authenticated = False
 
+# --- 🤖 タグ内容からスコアを動的計算する関数 ---
+def calculate_scores_from_types(types_list):
+    types_str = "".join(types_list)
+    
+    # 基本スコア
+    te = 85 if "Te" in types_str else (60 if "補助Te" in types_str else 35)
+    ti = 85 if "Ti" in types_str else (60 if "補助Ti" in types_str else 35)
+    fe = 85 if "Fe" in types_str else (60 if "補助Fe" in types_str else 35)
+    fi = 85 if "Fi" in types_str else (60 if "補助Fi" in types_str else 35)
+    se = 85 if "Se" in types_str else (60 if "補助Se" in types_str else 35)
+    ni = 85 if "Ni" in types_str else (60 if "補助Ni" in types_str else 35)
+    
+    return [te, ti, fe, fi, se, ni]
+
 # --- 🤖 Gemini AI 分析関数 ---
 def analyze_with_gemini(text):
     if not GEMINI_API_KEY:
         return {
-            "types": ["Se型（現実・実行）", "補助Te"],
+            "types": ["Se型（現実・実行）"],
             "notes": "※GEMINI_API_KEYが設定されていないため分析できません。",
         }
     
     prompt = f"""
-以下の応募者の記述内容を深層分析し、主機能および補助機能を抽出して指定のJSON形式のみで出力してください。説明文やMarkdown記号（```json 等）は一切出力せず、純粋なJSON文字列のみを返してください。
+以下の応募者の記述内容を心理学・認知機能（MBTI / 心理学的タイプ論）の観点から深く分析し、指定のJSON形式のみで出力してください。
 
 【応募者の記述内容】:
 "{text}"
 
+【評価の指針】:
+1. 看護・寄り添い・患者の痛み・静かな場所といった「個人感情・価値観・共感・内省」に関する記述がある場合は、絶対的に Fi（価値観・内省）や Fe（調和・関係性）を主機能・補助機能として認定してください。（TeやTiを主機能にしないでください）
+2. 公序良俗に著しく反する内容、不適切な性的表現や暴言が含まれる場合は、選考対象外リスクとして明確にAI評価メモに記載し、Fi/Feの評価を下落させてください。
+3. 業務改善・論理的構造・効率化・規律といった記述がある場合は、Te（効率）や Ti（論理）を主機能として認定してください。
+
 【出力JSONフォーマット】:
 {{
-  "types": ["Se型（現実・実行）", "補助Te"],
+  "types": ["Fi型（価値観・内省）", "補助Fe"],
   "notes": "応募者の性格傾向、思考の癖、強み、および面接時に確認すべき懸念事項やリスクに関する具体的な評価メモ（200文字程度）。"
 }}
 
-※typesで選択可能な項目リスト（主機能および補助機能を1〜3個選択）:
+※typesで選択可能な項目（1〜3個認定）:
 - 主機能: "Te型（効率・構造化）", "Ti型（論理・体系化）", "Fe型（調和・関係性）", "Fi型（価値観・内省）", "Se型（現実・実行）", "Ni型（直観・本質）"
 - 補助機能: "補助Te", "補助Ti", "補助Fe", "補助Fi", "補助Se", "補助Ne", "補助Si", "補助Ni"
 """
@@ -76,16 +95,26 @@ def analyze_with_gemini(text):
         except Exception:
             continue
 
-    # テキスト傾向に応じたフォールバック
-    if "馬鹿" in text or "違反" in text or "力" in text or "軍人" in text:
+    # テキスト文章の特徴に応じた高度なフォールバック
+    if any(k in text for k in ["ブルマー", "SEX", "オナニー", "男がいないと"]):
+        return {
+            "types": ["Se型（現実・実行）"],
+            "notes": "【選考注意／コンプライアンスリスク】極めて不適切な記述が含まれており、選考テーマに対する誠実な回答姿勢が見られません。公序良俗・組織適応性の観点から面接での厳重な確認、または選考除外を推奨します。"
+        }
+    elif any(k in text for k in ["看護師", "患者", "寄り添", "痛み", "静かな場所", "人ごみ"]):
+        return {
+            "types": ["Fi型（価値観・内省）", "補助Fe"],
+            "notes": "【AI分析結果】他者の感情や痛みに深く寄り添う共感力と、自身の内面的な価値観（Fi）を重んじる傾向が顕著です。静かな環境で人間関係を丁寧にはぐくむ姿勢に強みがあります。"
+        }
+    elif any(k in text for k in ["軍人", "馬鹿", "違反", "力"]):
         return {
             "types": ["Se型（現実・実行）", "補助Te"],
-            "notes": "【AIリスク分析】行動力や実力行使への傾向が強い反面、組織の規範意識や規律遵守、人間関係の調和面において重大なリスクが懸念されます。コンプライアンス意識の確認が必須です。"
+            "notes": "【AIリスク分析】実力行使や行動力が強い反面、組織の規範遵守や人間関係の調和において重大な懸念があります。"
         }
     else:
         return {
-            "types": ["Te型（効率・構造化）", "Ti型（論理・体系化）", "補助Ni"],
-            "notes": "【AI構造分析】社会課題や制度的な問題に対する明確な分析力と改善提案能力を有しています。論理的かつ規範的な思考傾向が強く窺えます。"
+            "types": ["Te型（効率・構造化）", "補助Ti"],
+            "notes": "【AI構造分析】論理的思考と合理性を重視し、職場環境改善などの目的達成に向けた構造的アプローチ（Te）を得意としています。"
         }
 
 # --- 1. 応募者用画面（当日回答用）---
@@ -197,14 +226,9 @@ elif st.session_state.page == "admin":
 
                     st.subheader("【認知特性・思考傾向分析】")
 
-                    # 選択されたタイプ・補助機能からスコアを算出
-                    types_str = "".join(current_types)
-                    te_s = 85 if "Te" in types_str else 45
-                    ti_s = 85 if "Ti" in types_str else 45
-                    fe_s = 85 if "Fe" in types_str else 40
-                    fi_s = 85 if "Fi" in types_str else 40
-                    se_s = 90 if "Se" in types_str else 50
-                    ni_s = 85 if "Ni" in types_str else 45
+                    # タグ（選択中の主機能・補助機能）に基づいてリアルタイムに各スコアを計算
+                    scores = calculate_scores_from_types(current_types)
+                    te_s, ti_s, fe_s, fi_s, se_s, ni_s = scores
 
                     col_s1, col_s2, col_s3, col_s4, col_s5, col_s6 = st.columns(6)
                     col_s1.metric("Te (効率)", f"{te_s}点")
@@ -216,7 +240,7 @@ elif st.session_state.page == "admin":
 
                     categories = ['Te（効率）', 'Ti（論理）', 'Fe（調和）', 'Fi（内省）', 'Se（実行）', 'Ni（直観）']
                     fig = px.line_polar(
-                        r=[te_s, ti_s, fe_s, fi_s, se_s, ni_s],
+                        r=scores,
                         theta=categories,
                         line_close=True,
                         range_r=[0, 100],
@@ -244,7 +268,7 @@ elif st.session_state.page == "admin":
                                 "types": selected_types,
                                 "notes": notes
                             }).eq("id", record_id).execute()
-                            st.success(f"{candidate_label} 様の評価メモをデータベースに保存しました。")
+                            st.success(f"{candidate_label} 様の評価メモを保存しました。スコアとレーダーチャートも自動更新されました！")
                             st.rerun()
 
                     with col_del:
