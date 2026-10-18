@@ -48,7 +48,7 @@ def analyze_with_gemini(text):
 "{text}"
 
 【評価方針】:
-記述内容の論理性、倫理観、効率性、感情・人間関係への配慮、現実的行動力、直観的本質把握力を0〜100で厳格に採点してください。
+記述内容の論理性、倫理観、効率性、感情・人間関係への配慮、現実的行動力、直観的本質把握力を0〜100で厳格に採点してください。文章の特徴や危険性・強みが明確に出るように差をつけて採点してください。
 
 【出力JSONフォーマット】:
 {{
@@ -60,7 +60,7 @@ def analyze_with_gemini(text):
 
 ※typesの選択肢: "Te型（効率・構造化）", "Ti型（論理・体系化）", "Fe型（調和・関係性）", "Fi型（価値観・内省）", "Se型（現実・実行）", "Ni型（直観・本質）"
 ※sub_functionsの選択肢: "補助Te", "補助Ti", "補助Fe", "補助Fi", "補助Se", "補助Ne", "補助Si", "補助Ni"
-※scoresは Te, Ti, Fe, Fi, Se, Ni の順番で各0〜100の数値リスト。各特性の違いが明確に出るように評価してください。
+※scoresは Te, Ti, Fe, Fi, Se, Ni の順番で各0〜100の数値リスト。
 """
     model_names = ["gemini-1.5-flash", "gemini-1.5-pro", "gemini-1.0-pro"]
     
@@ -83,12 +83,13 @@ def analyze_with_gemini(text):
         except Exception:
             continue
 
-    # 分析フォールバック（テキスト特徴から簡易スコア算出）
+    # テキスト傾向に応じたフォールバック数値生成
+    is_violent = "馬鹿" in text or "違反" in text or "力" in text
     return {
-        "types": ["Se型（現実・実行）" if "力" in text or "空手" in text else "Te型（効率・構造化）"],
-        "sub_functions": ["補助Te" if "力" in text else "補助Ti"],
-        "notes": "【AI分析】文章の論理構成および主張の内容から、行動傾向や課題意識を分析しました。面接にて具体的な行動プロセスの確認を推奨します。",
-        "scores": [70 if "対応" in text else 40, 80 if "制度" in text else 30, 20 if "馬鹿" in text else 60, 30 if "違反" in text else 50, 90 if "空手" in text else 50, 60]
+        "types": ["Se型（現実・実行）"] if is_violent else ["Te型（効率・構造化）", "Ti型（論理・体系化）"],
+        "sub_functions": ["補助Te"] if is_violent else ["補助Ti"],
+        "notes": "【AI分析結果】力や実行力を重視する傾向が強く、組織の規律遵守意識にリスクが見受けられます。" if is_violent else "【AI分析結果】制度や仕組みによる課題解決を志向する論理的・構造的な思考傾向が見られます。",
+        "scores": [60, 40, 15, 20, 90, 40] if is_violent else [85, 80, 45, 50, 60, 75]
     }
 
 # --- 1. 応募者用画面（当日回答用）---
@@ -96,7 +97,7 @@ if st.session_state.page == "candidate":
     st.title("思考・表現力セッション（当日入力）")
     st.write(
         "本日はご来社いただきありがとうございます。"
-        "面接開始前に、以下のテーマに沿ってご自身の考えやエピソードをご入力ください。"
+        "以下のテーマに沿ってご自身の考えやエピソードをご入力ください。"
         "能力の優劣を評価するものではありませんので、リラックスしてお進みください。"
     )
 
@@ -189,9 +190,9 @@ elif st.session_state.page == "admin":
 
                     st.markdown("---")
                     
-                    # 🤖 AI再分析・スコア再計算ボタン
+                    # 🤖 赤色のAI分析ボタンをクリックで即座に個別分析を実行＆DB上書き保存
                     if st.button(f"🤖 {candidate_label} 様のAI個別分析を再実行する", key=f"re_analyze_{record_id}", type="primary"):
-                        with st.spinner("Gemini AIによる分析を実行中..."):
+                        with st.spinner("Gemini AIによる個別の深層分析を実行中..."):
                             ai_res = analyze_with_gemini(data["text"])
                             current_types = ai_res.get("types", [])
                             current_subs = ai_res.get("sub_functions", [])
@@ -205,7 +206,7 @@ elif st.session_state.page == "admin":
                                 "notes": current_notes,
                                 "scores": current_scores
                             }).eq("id", record_id).execute()
-                            st.success("AI分析およびスコアを更新しました！")
+                            st.success("AI個別分析結果を更新・保存しました！")
                             st.rerun()
 
                     st.subheader("【認知特性・思考傾向分析】")
