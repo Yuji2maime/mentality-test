@@ -35,7 +35,6 @@ if "admin_authenticated" not in st.session_state:
 def calculate_scores_from_types(types_list):
     types_str = "".join(types_list)
     
-    # 基本スコア
     te = 85 if "Te" in types_str else (60 if "補助Te" in types_str else 35)
     ti = 85 if "Ti" in types_str else (60 if "補助Ti" in types_str else 35)
     fe = 85 if "Fe" in types_str else (60 if "補助Fe" in types_str else 35)
@@ -95,7 +94,7 @@ def analyze_with_gemini(text):
         except Exception:
             continue
 
-    # テキスト文章の特徴に応じた高度なフォールバック
+    # テキスト文章の特徴に応じたフォールバック
     if any(k in text for k in ["ブルマー", "SEX", "オナニー", "男がいないと"]):
         return {
             "types": ["Se型（現実・実行）"],
@@ -221,12 +220,16 @@ elif st.session_state.page == "admin":
                                 "types": current_types,
                                 "notes": current_notes
                             }).eq("id", record_id).execute()
+                            
+                            # ウィジェットの状態も強制的に更新
+                            st.session_state[f"types_{record_id}"] = current_types
+                            st.session_state[f"notes_{record_id}"] = current_notes
+                            
                             st.success("AI分析結果を更新しました！")
                             st.rerun()
 
                     st.subheader("【認知特性・思考傾向分析】")
 
-                    # タグ（選択中の主機能・補助機能）に基づいてリアルタイムに各スコアを計算
                     scores = calculate_scores_from_types(current_types)
                     te_s, ti_s, fe_s, fi_s, se_s, ni_s = scores
 
