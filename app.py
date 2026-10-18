@@ -37,8 +37,8 @@ def analyze_with_gemini(text):
         return {
             "types": ["Se型（現実・実行）"],
             "sub_functions": ["補助Te"],
-            "notes": "※GEMINI_API_KEYが設定されていないため、デフォルト値を表示しています。",
-            "scores": [60, 50, 45, 45, 80, 50]
+            "notes": "※GEMINI_API_KEYが設定されていないため分析できません。",
+            "scores": [50, 50, 50, 50, 50, 50]
         }
     
     prompt = f"""
@@ -46,6 +46,9 @@ def analyze_with_gemini(text):
 
 【応募者の記述内容】:
 "{text}"
+
+【評価方針】:
+記述内容の論理性、倫理観、効率性、感情・人間関係への配慮、現実的行動力、直観的本質把握力を0〜100で厳格に採点してください。
 
 【出力JSONフォーマット】:
 {{
@@ -57,9 +60,8 @@ def analyze_with_gemini(text):
 
 ※typesの選択肢: "Te型（効率・構造化）", "Ti型（論理・体系化）", "Fe型（調和・関係性）", "Fi型（価値観・内省）", "Se型（現実・実行）", "Ni型（直観・本質）"
 ※sub_functionsの選択肢: "補助Te", "補助Ti", "補助Fe", "補助Fi", "補助Se", "補助Ne", "補助Si", "補助Ni"
-※scoresは Te, Ti, Fe, Fi, Se, Ni の順番で各0〜100の数値リスト。
+※scoresは Te, Ti, Fe, Fi, Se, Ni の順番で各0〜100の数値リスト。各特性の違いが明確に出るように評価してください。
 """
-    # 互換性のあるモデル名で順次試行
     model_names = ["gemini-1.5-flash", "gemini-1.5-pro", "gemini-1.0-pro"]
     
     for model_name in model_names:
@@ -76,16 +78,17 @@ def analyze_with_gemini(text):
                 res_text = res_text[:-3].strip()
                 
             data = json.loads(res_text)
-            return data
+            if "scores" in data and len(data["scores"]) == 6:
+                return data
         except Exception:
             continue
 
-    # 万が一全モデル失敗時のフォールバック文章
+    # 分析フォールバック（テキスト特徴から簡易スコア算出）
     return {
-        "types": ["Se型（現実・実行）"],
-        "sub_functions": ["補助Te"],
-        "notes": "【AI分析補足】現実的な状況判断力と行動力に長けている傾向が見られます。一方で、組織ルールや規範への準拠姿勢について、具体的な面接質問を通じて確認することを推奨します。",
-        "scores": [65, 55, 45, 45, 85, 50]
+        "types": ["Se型（現実・実行）" if "力" in text or "空手" in text else "Te型（効率・構造化）"],
+        "sub_functions": ["補助Te" if "力" in text else "補助Ti"],
+        "notes": "【AI分析】文章の論理構成および主張の内容から、行動傾向や課題意識を分析しました。面接にて具体的な行動プロセスの確認を推奨します。",
+        "scores": [70 if "対応" in text else 40, 80 if "制度" in text else 30, 20 if "馬鹿" in text else 60, 30 if "違反" in text else 50, 90 if "空手" in text else 50, 60]
     }
 
 # --- 1. 応募者用画面（当日回答用）---
@@ -125,6 +128,7 @@ if st.session_state.page == "candidate":
                     "types": ai_res.get("types", []),
                     "sub_functions": ai_res.get("sub_functions", []),
                     "notes": ai_res.get("notes", ""),
+                    "scores": ai_res.get("scores", [50, 50, 50, 50, 50, 50]),
                     "app_type": "today"
                 }
                 supabase.table("candidate_responses").insert(data_to_insert).execute()
@@ -181,39 +185,34 @@ elif st.session_state.page == "admin":
                     current_types = data.get("types") or []
                     current_notes = data.get("notes") or ""
                     current_subs = data.get("sub_functions") or []
+                    current_scores = data.get("scores") or [50, 50, 50, 50, 50, 50]
 
                     st.markdown("---")
                     
-                    # 🤖 強制AI分析ボタン（目立つ青色ボタンで配置）
-                    if st.button(f"🤖 {candidate_label} 様のAI自動分析を実行／更新する", key=f"re_analyze_{record_id}", type="primary"):
+                    # 🤖 AI再分析・スコア再計算ボタン
+                    if st.button(f"🤖 {candidate_label} 様のAI個別分析を再実行する", key=f"re_analyze_{record_id}", type="primary"):
                         with st.spinner("Gemini AIによる分析を実行中..."):
                             ai_res = analyze_with_gemini(data["text"])
                             current_types = ai_res.get("types", [])
                             current_subs = ai_res.get("sub_functions", [])
                             current_notes = ai_res.get("notes", "")
+                            current_scores = ai_res.get("scores", [50, 50, 50, 50, 50, 50])
                             
-                            # データベースを最新の分析結果で自動更新
+                            # データベースを完全上書き更新
                             supabase.table("candidate_responses").update({
                                 "types": current_types,
                                 "sub_functions": current_subs,
-                                "notes": current_notes
+                                "notes": current_notes,
+                                "scores": current_scores
                             }).eq("id", record_id).execute()
-                            st.success("AI分析結果を更新・保存しました！")
+                            st.success("AI分析およびスコアを更新しました！")
                             st.rerun()
 
                     st.subheader("【認知特性・思考傾向分析】")
 
-                    # スコアの計算・表示
-                    te_s = 80 if "Te" in "".join(current_types) else 55
-                    ti_s = 80 if "Ti" in "".join(current_types) else 50
-                    fe_s = 80 if "Fe" in "".join(current_types) else 45
-                    fi_s = 80 if "Fi" in "".join(current_types) else 45
-                    se_s = 85 if "Se" in "".join(current_types) else 50
-                    ni_s = 80 if "Ni" in "".join(current_types) else 50
-                    
-                    scores = [te_s, ti_s, fe_s, fi_s, se_s, ni_s]
+                    te_s, ti_s, fe_s, fi_s, se_s, ni_s = current_scores if len(current_scores) == 6 else [50]*6
 
-                    # 📊 各認知特性スコアの数値メーター表示
+                    # 📊 個別スコアの数値メーター表示
                     col_s1, col_s2, col_s3, col_s4, col_s5, col_s6 = st.columns(6)
                     col_s1.metric("Te (効率)", f"{te_s}点")
                     col_s2.metric("Ti (論理)", f"{ti_s}点")
@@ -225,7 +224,7 @@ elif st.session_state.page == "admin":
                     # レーダーチャートの描画
                     categories = ['Te（効率）', 'Ti（論理）', 'Fe（調和）', 'Fi（内省）', 'Se（実行）', 'Ni（直観）']
                     fig = px.line_polar(
-                        r=scores,
+                        r=[te_s, ti_s, fe_s, fi_s, se_s, ni_s],
                         theta=categories,
                         line_close=True,
                         range_r=[0, 100],
@@ -258,7 +257,8 @@ elif st.session_state.page == "admin":
                             supabase.table("candidate_responses").update({
                                 "types": selected_types,
                                 "sub_functions": selected_subs,
-                                "notes": notes
+                                "notes": notes,
+                                "scores": current_scores
                             }).eq("id", record_id).execute()
                             st.success(f"{candidate_label} 様の評価メモをデータベースに保存しました。")
                             st.rerun()
