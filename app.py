@@ -36,9 +36,7 @@ def analyze_with_gemini(text):
     if not GEMINI_API_KEY:
         return {
             "types": ["Se型（現実・実行）"],
-            "sub_functions": ["補助Te"],
             "notes": "※GEMINI_API_KEYが設定されていないため分析できません。",
-            "scores": [50, 50, 50, 50, 50, 50]
         }
     
     prompt = f"""
@@ -47,20 +45,13 @@ def analyze_with_gemini(text):
 【応募者の記述内容】:
 "{text}"
 
-【評価方針】:
-記述内容の論理性(Ti)、効率性(Te)、調和性(Fe)、内省・倫理観(Fi)、実行力(Se)、直観(Ni)を0〜100で厳格に採点してください。文章の特徴や課題、強みが明確に出るように差をつけて採点してください。
-
 【出力JSONフォーマット】:
 {{
-  "types": ["Te型（効率・構造化）", "Se型（現実・実行）"],
-  "sub_functions": ["補助Te", "補助Ti"],
-  "notes": "応募者の性格傾向、思考の癖、強み、および面接時に確認すべき懸念事項やリスクに関する具体的な評価メモ（200文字程度）。",
-  "scores": [Teスコア, Tiスコア, Feスコア, Fiスコア, Seスコア, Niスコア]
+  "types": ["Te型（効率・構造化）"],
+  "notes": "応募者の性格傾向、思考の癖、強み、および面接時に確認すべき懸念事項やリスクに関する具体的な評価メモ（200文字程度）。"
 }}
 
-※typesの選択肢: "Te型（効率・構造化）", "Ti型（論理・体系化）", "Fe型（調和・関係性）", "Fi型（価値観・内省）", "Se型（現実・実行）", "Ni型（直観・本質）"
-※sub_functionsの選択肢: "補助Te", "補助Ti", "補助Fe", "補助Fi", "補助Se", "補助Ne", "補助Si", "補助Ni"
-※scoresは Te, Ti, Fe, Fi, Se, Ni の順番で各0〜100の数値リスト。
+※typesの選択肢（複数可）: "Te型（効率・構造化）", "Ti型（論理・体系化）", "Fe型（調和・関係性）", "Fi型（価値観・内省）", "Se型（現実・実行）", "Ni型（直観・本質）"
 """
     model_names = ["gemini-1.5-flash", "gemini-1.5-pro", "gemini-1.0-pro"]
     
@@ -78,25 +69,21 @@ def analyze_with_gemini(text):
                 res_text = res_text[:-3].strip()
                 
             data = json.loads(res_text)
-            if "scores" in data and len(data["scores"]) == 6:
+            if "types" in data and "notes" in data:
                 return data
         except Exception:
             continue
 
-    # ルールベースフォールバック（文章の特徴からスコアに明確な偏りを生じさせる）
+    # テキスト傾向に応じたフォールバック
     if "馬鹿" in text or "違反" in text or "力" in text or "軍人" in text:
         return {
             "types": ["Se型（現実・実行）"],
-            "sub_functions": ["補助Te"],
-            "notes": "【AIリスク分析】行動力や実力行使への傾向が非常に強い反面、組織の規範意識や規律遵守、人間関係の調和面において重大なリスクが懸念されます。面接にてコンプライアンス意識の確認が必須です。",
-            "scores": [65, 30, 10, 15, 95, 35]
+            "notes": "【AIリスク分析】行動力や実力行使への傾向が強い反面、組織の規範意識や規律遵守、人間関係の調和面において重大なリスクが懸念されます。コンプライアンス意識の確認が必須です。"
         }
     else:
         return {
             "types": ["Te型（効率・構造化）", "Ti型（論理・体系化）"],
-            "sub_functions": ["補助Te", "補助Ti"],
-            "notes": "【AI構造分析】社会課題や制度的な問題に対する明確な分析力と改善提案能力を有しています。論理的かつ規範的な思考傾向が強く窺えます。",
-            "scores": [85, 80, 40, 55, 60, 75]
+            "notes": "【AI構造分析】社会課題や制度的な問題に対する明確な分析力と改善提案能力を有しています。論理的かつ規範的な思考傾向が強く窺えます。"
         }
 
 # --- 1. 応募者用画面（当日回答用）---
@@ -130,13 +117,12 @@ if st.session_state.page == "candidate":
             if candidate_name.strip() and text_input.strip():
                 ai_res = analyze_with_gemini(text_input)
                 
+                # Supabaseに存在する安全な標準カラムのみで保存
                 data_to_insert = {
                     "name": candidate_name,
                     "text": text_input,
                     "types": ai_res.get("types", []),
-                    "sub_functions": ai_res.get("sub_functions", []),
                     "notes": ai_res.get("notes", ""),
-                    "scores": ai_res.get("scores", [50, 50, 50, 50, 50, 50]),
                     "app_type": "today"
                 }
                 supabase.table("candidate_responses").insert(data_to_insert).execute()
@@ -192,41 +178,33 @@ elif st.session_state.page == "admin":
 
                     current_types = data.get("types") or []
                     current_notes = data.get("notes") or ""
-                    current_subs = data.get("sub_functions") or []
-                    current_scores = data.get("scores") or []
-
-                    # 既存データにスコアがない、またはエラー文面が残っている場合は自動再計算
-                    if not current_scores or "AI分析エラー" in current_notes or "404" in current_notes or len(current_scores) != 6:
-                        ai_res = analyze_with_gemini(data["text"])
-                        current_types = ai_res.get("types", [])
-                        current_subs = ai_res.get("sub_functions", [])
-                        current_notes = ai_res.get("notes", "")
-                        current_scores = ai_res.get("scores", [50, 50, 50, 50, 50, 50])
 
                     st.markdown("---")
                     
-                    if st.button(f"🤖 {candidate_label} 様のAI個別分析を再実行する", key=f"re_analyze_{record_id}", type="primary"):
-                        with st.spinner("Gemini AIによる個別の深層分析を実行中..."):
+                    if st.button(f"🤖 {candidate_label} 様のAI分析を再実行する", key=f"re_analyze_{record_id}", type="primary"):
+                        with st.spinner("Gemini AIによる分析を実行中..."):
                             ai_res = analyze_with_gemini(data["text"])
                             current_types = ai_res.get("types", [])
-                            current_subs = ai_res.get("sub_functions", [])
                             current_notes = ai_res.get("notes", "")
-                            current_scores = ai_res.get("scores", [50, 50, 50, 50, 50, 50])
                             
                             supabase.table("candidate_responses").update({
                                 "types": current_types,
-                                "sub_functions": current_subs,
-                                "notes": current_notes,
-                                "scores": current_scores
+                                "notes": current_notes
                             }).eq("id", record_id).execute()
-                            st.success("AI個別分析結果を更新・保存しました！")
+                            st.success("AI分析結果を更新しました！")
                             st.rerun()
 
                     st.subheader("【認知特性・思考傾向分析】")
 
-                    te_s, ti_s, fe_s, fi_s, se_s, ni_s = current_scores if len(current_scores) == 6 else [50]*6
+                    # 選択されたタイプから動的にスコアを算出して連動表示
+                    types_str = "".join(current_types)
+                    te_s = 85 if "Te" in types_str else 45
+                    ti_s = 85 if "Ti" in types_str else 45
+                    fe_s = 85 if "Fe" in types_str else 40
+                    fi_s = 85 if "Fi" in types_str else 40
+                    se_s = 90 if "Se" in types_str else 50
+                    ni_s = 85 if "Ni" in types_str else 45
 
-                    # 📊 個別スコアの数値メーター表示
                     col_s1, col_s2, col_s3, col_s4, col_s5, col_s6 = st.columns(6)
                     col_s1.metric("Te (効率)", f"{te_s}点")
                     col_s2.metric("Ti (論理)", f"{ti_s}点")
@@ -235,7 +213,6 @@ elif st.session_state.page == "admin":
                     col_s5.metric("Se (実行)", f"{se_s}点")
                     col_s6.metric("Ni (直観)", f"{ni_s}点")
 
-                    # レーダーチャートの描画
                     categories = ['Te（効率）', 'Ti（論理）', 'Fe（調和）', 'Fi（内省）', 'Se（実行）', 'Ni（直観）']
                     fig = px.line_polar(
                         r=[te_s, ti_s, fe_s, fi_s, se_s, ni_s],
@@ -247,21 +224,12 @@ elif st.session_state.page == "admin":
                     fig.update_traces(fill='toself')
                     st.plotly_chart(fig, use_container_width=True)
 
-                    col_a, col_b = st.columns(2)
-                    with col_a:
-                        selected_types = st.multiselect(
-                            "主機能・認知タイプ（該当するものすべて）",
-                            ["Te型（効率・構造化）", "Ti型（論理・体系化）", "Fe型（調和・関係性）", "Fi型（価値観・内省）", "Se型（現実・実行）", "Ni型（直観・本質）"],
-                            default=current_types,
-                            key=f"types_{record_id}"
-                        )
-                    with col_b:
-                        selected_subs = st.multiselect(
-                            "補助機能（複数認定）",
-                            ["補助Te", "補助Ti", "補助Fe", "補助Fi", "補助Se", "補助Ne", "補助Si", "補助Ni"],
-                            default=current_subs,
-                            key=f"subs_{record_id}"
-                        )
+                    selected_types = st.multiselect(
+                        "主機能・認知タイプ（該当するものすべて）",
+                        ["Te型（効率・構造化）", "Ti型（論理・体系化）", "Fe型（調和・関係性）", "Fi型（価値観・内省）", "Se型（現実・実行）", "Ni型（直観・本質）"],
+                        default=current_types,
+                        key=f"types_{record_id}"
+                    )
 
                     notes = st.text_area("採用・面接評価メモ（思考の癖、リスク、面接時確認事項など）", value=current_notes, key=f"notes_{record_id}")
 
@@ -270,9 +238,7 @@ elif st.session_state.page == "admin":
                         if st.button("評価・メモを保存する", key=f"save_{record_id}", type="primary"):
                             supabase.table("candidate_responses").update({
                                 "types": selected_types,
-                                "sub_functions": selected_subs,
-                                "notes": notes,
-                                "scores": current_scores
+                                "notes": notes
                             }).eq("id", record_id).execute()
                             st.success(f"{candidate_label} 様の評価メモをデータベースに保存しました。")
                             st.rerun()
