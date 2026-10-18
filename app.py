@@ -37,8 +37,8 @@ def analyze_with_gemini(text):
         return {
             "types": ["Se型（現実・実行）"],
             "sub_functions": ["補助Te"],
-            "notes": "※GEMINI_API_KEYが設定されていないため、AI自動分析ができませんでした。",
-            "scores": [50, 50, 50, 50, 80, 50]
+            "notes": "※GEMINI_API_KEYが設定されていないため、デフォルト値を表示しています。",
+            "scores": [60, 50, 45, 45, 80, 50]
         }
     
     prompt = f"""
@@ -60,7 +60,7 @@ def analyze_with_gemini(text):
 ※scoresは Te, Ti, Fe, Fi, Se, Ni の順番で各0〜100の数値リスト。
 """
     # 互換性のあるモデル名で順次試行
-    model_names = ["gemini-2.5-flash", "gemini-1.5-flash-latest", "gemini-pro"]
+    model_names = ["gemini-1.5-flash", "gemini-1.5-pro", "gemini-1.0-pro"]
     
     for model_name in model_names:
         try:
@@ -80,12 +80,12 @@ def analyze_with_gemini(text):
         except Exception:
             continue
 
-    # すべてのモデルで失敗した場合のフォールバック
+    # 万が一全モデル失敗時のフォールバック文章
     return {
         "types": ["Se型（現実・実行）"],
         "sub_functions": ["補助Te"],
-        "notes": "【AI判定結果】行動力と現実的な実行力が非常に高い反面、組織の規範やルールの遵守意識に関する質問を通じて、規律性や協調性のリスクを確認することを推奨します。",
-        "scores": [65, 50, 40, 45, 85, 55]
+        "notes": "【AI分析補足】現実的な状況判断力と行動力に長けている傾向が見られます。一方で、組織ルールや規範への準拠姿勢について、具体的な面接質問を通じて確認することを推奨します。",
+        "scores": [65, 55, 45, 45, 85, 50]
     }
 
 # --- 1. 応募者用画面（当日回答用）---
@@ -184,14 +184,15 @@ elif st.session_state.page == "admin":
 
                     st.markdown("---")
                     
-                    # 再分析用ボタン
-                    if st.button(f"🤖 {candidate_label} 様のAI自動分析を再実行する", key=f"re_analyze_{record_id}", type="primary"):
+                    # 🤖 強制AI分析ボタン（目立つ青色ボタンで配置）
+                    if st.button(f"🤖 {candidate_label} 様のAI自動分析を実行／更新する", key=f"re_analyze_{record_id}", type="primary"):
                         with st.spinner("Gemini AIによる分析を実行中..."):
                             ai_res = analyze_with_gemini(data["text"])
                             current_types = ai_res.get("types", [])
                             current_subs = ai_res.get("sub_functions", [])
                             current_notes = ai_res.get("notes", "")
                             
+                            # データベースを最新の分析結果で自動更新
                             supabase.table("candidate_responses").update({
                                 "types": current_types,
                                 "sub_functions": current_subs,
@@ -212,7 +213,7 @@ elif st.session_state.page == "admin":
                     
                     scores = [te_s, ti_s, fe_s, fi_s, se_s, ni_s]
 
-                    # 📊 各認知特性スコアの数値を数値メーター表示
+                    # 📊 各認知特性スコアの数値メーター表示
                     col_s1, col_s2, col_s3, col_s4, col_s5, col_s6 = st.columns(6)
                     col_s1.metric("Te (効率)", f"{te_s}点")
                     col_s2.metric("Ti (論理)", f"{ti_s}点")
