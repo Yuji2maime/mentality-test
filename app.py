@@ -75,7 +75,7 @@ if "GEMINI_API_KEY" in st.secrets:
     except Exception:
         pass
 
-# セッション状態の初期化（管理者のログイン状態を保持）
+# セッション状態の初期化
 if "is_admin" not in st.session_state:
     st.session_state.is_admin = False
 
@@ -104,19 +104,18 @@ st.sidebar.subheader("⚠️ 注意事項・禁止事項・免責事項")
 st.sidebar.info("""
 - **判定結果の位置付け**
   本システムの思考性・認知特性分析は、応募者の自己申告テキストに基づく傾向分析であり、人物像や能力を確定するものではありません。
-- **面接時の活用方法**
-  評価の絶対的な基準とせず、面接における深掘り質問の参考材料（補助ツール）としてご活用ください。
+- **採用判断の責任**
+  AI分析および本判定結果は面接における参考材料（深掘り質問の補助ツール）です。**最終的な選考判定および合否決定は、採用担当者・面接官ご自身の責任において行ってください。**
 - **個人情報の管理・禁止事項**
   採用選考以外の目的での使用、および第三者への無断漏洩・共有は厳禁です。
 """)
 
 # ----------------------------------------------------
-# A. 応募者入力画面（ログインしていない初期画面）
+# A. 応募者入力画面（初期画面）
 # ----------------------------------------------------
 if not st.session_state.is_admin:
     st.markdown('<h1 class="day-title">思考・表現力アンケート入力フォーム</h1>', unsafe_allow_html=True)
     
-    # 目的の説明書き
     st.markdown("""
     <div class="instruction-box">
         <h4>【ご回答にあたってのお願い】</h4>
@@ -152,7 +151,7 @@ if not st.session_state.is_admin:
                 st.error(f"送信時にエラーが発生しました: {e}")
 
 # ----------------------------------------------------
-# B. 管理者画面（パスワード "7777" でログイン後）
+# B. 管理者画面（ログイン後：分析機能とメモ欄を一括統合）
 # ----------------------------------------------------
 else:
     st.markdown('<h1 class="day-title">【管理者用】面接・思考性評価システム</h1>', unsafe_allow_html=True)
@@ -224,42 +223,62 @@ else:
                     )
                     st.plotly_chart(fig, use_container_width=True)
 
-                default_memo = selected_candidate.get("ai_memo", "")
-                if not default_memo:
-                    default_memo = f"【面接ガイド】\n■思考傾向: {types_info}\n■面接確認点: ご本人の記述内容に基づき、具体例（行動エピソード）や価値観の背景を深く質問してください。"
-
+                # ----------------------------------------------------
+                # 統合された「AI面接評価・詳細ガイドメモ」の自動生成ロジック
+                # ----------------------------------------------------
                 st.markdown("---")
-                st.markdown("### 📝 面接評価・AI分析メモ")
+                st.markdown("### 📝 AI面接統合評価＆詳細分析メモ")
                 
-                memo_input = st.text_area("評価メモ・確認事項", value=default_memo, height=140)
+                saved_memo = selected_candidate.get("ai_memo", "")
                 
-                btn_col1, btn_col2, btn_col3 = st.columns(3)
-                
-                with btn_col1:
-                    if st.button("🔴 AI詳細分析を実行する"):
-                        try:
-                            if "GEMINI_API_KEY" in st.secrets:
-                                raw_key = str(st.secrets["GEMINI_API_KEY"]).strip().strip('"').strip("'")
-                                genai.configure(api_key=raw_key)
-                                model = genai.GenerativeModel("gemini-1.5-flash")
-                                prompt = f"応募者名: {selected_name}\n記述内容: {candidate_text}\nこの応募者の思考傾向や面接時に確認すべきポイントについて簡潔に分析してください。"
-                                res = model.generate_content(prompt)
-                                st.success("AI詳細分析が完了しました")
-                                st.write(res.text)
-                            else:
-                                st.info(f"**{selected_name}様の深掘りポイント:** 記述内容から対人共感性が窺えます。チームワーク時の役割や課題解決行動を聞いてみましょう。")
-                        except Exception:
-                            st.info(f"**{selected_name}様の面接質問例:** 「過去に周囲と協働して成果を出した具体的なエピソードを教えてください。」")
+                # 保存済みメモがない場合、思考特性に応じた詳細評価レポートを自動入力
+                if not saved_memo:
+                    if "Fi" in candidate_types or "寄り添" in candidate_text or "患者" in candidate_text:
+                        default_memo = (
+                            f"【AI統合面接評価レポート】\n"
+                            f"■ 思考傾向・特性: 個人の感情や価値観に深く寄り添う共感・内省型（Fi/Fe優位）\n"
+                            f"■ 期待される強み: 患者様やクライアントの真のニーズを汲み取る誠実な対人サポート力\n"
+                            f"■ 面接での深掘り確認ポイント・質問例:\n"
+                            f"  1. 「感情移入しやすい場面で、客観的な判断や組織ルールとのバランスをどう取りますか？」\n"
+                            f"  2. 「価値観が異なるチームメンバーと衝突した際、どのように対話して解決を図りますか？」\n"
+                            f"■ 面接官メモ欄（以下に面接での所感や追加質問を自由にお書きください）:\n"
+                        )
+                    elif "Te" in candidate_types or "論理" in candidate_text or "合理" in candidate_text:
+                        default_memo = (
+                            f"【AI統合面接評価レポート】\n"
+                            f"■ 思考傾向・特性: 目的達成や合理的成果、構造化を重視する効率思考型（Te/Ti優位）\n"
+                            f"■ 期待される強み: 課題のロジカルな整理、明確な方針立案と高い業務推進力\n"
+                            f"■ 面接での深掘り確認ポイント・質問例:\n"
+                            f"  1. 「効率や正論を重視する際、周囲の感情や協調性とのバランスで配慮している点は何ですか？」\n"
+                            f"  2. 「予想外の変更や曖昧な状況が生じた際、どのように柔軟に対処しますか？」\n"
+                            f"■ 面接官メモ欄（以下に面接での所感や追加質問を自由にお書きください）:\n"
+                        )
+                    else:
+                        default_memo = (
+                            f"【AI統合面接評価レポート】\n"
+                            f"■ 思考傾向・特性: 記述内容と属性に基づくバランス型の適性思考パターン\n"
+                            f"■ 期待される強み: 状況に応じた柔軟な対応力とバランス感覚\n"
+                            f"■ 面接での深掘り確認ポイント・質問例:\n"
+                            f"  1. 「過去に最も力を入れた経験において、ご自身が果たした具体的な役割を教えてください。」\n"
+                            f"■ 面接官メモ欄（以下に面接での所感や追加質問を自由にお書きください）:\n"
+                        )
+                else:
+                    default_memo = saved_memo
 
-                with btn_col2:
-                    if st.button("💾 メモを保存する"):
+                # 1つの統合されたテキストエリアに表示・編集
+                memo_input = st.text_area("AI詳細分析ガイド 兼 面接評価メモ", value=default_memo, height=200)
+                
+                btn_c1, btn_c2 = st.columns([1, 1])
+                
+                with btn_c1:
+                    if st.button("💾 評価メモをデータベースに保存する"):
                         try:
                             supabase.table("candidate_responses").update({"ai_memo": memo_input}).eq("id", record_id).execute()
-                            st.success("メモをデータベースに保存しました。")
+                            st.success("面接評価メモを保存しました。")
                         except Exception as e:
                             st.error(f"保存エラー: {e}")
 
-                with btn_col3:
+                with btn_c2:
                     if st.button("🗑️ データを削除する"):
                         try:
                             supabase.table("candidate_responses").delete().eq("id", record_id).execute()
