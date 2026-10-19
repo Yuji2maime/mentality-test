@@ -11,12 +11,12 @@ st.set_page_config(
     layout="wide"
 )
 
-# カスタムCSS（赤系テーマ・カードデザイン）
+# カスタムCSS（ダークモード/ライトモード両対応）
 st.markdown("""
 <style>
     .day-banner {
         background-color: #8B0000;
-        color: #FFFFFF;
+        color: #FFFFFF !important;
         padding: 10px 18px;
         border-radius: 6px;
         font-weight: bold;
@@ -33,15 +33,26 @@ st.markdown("""
     }
     .instruction-box {
         background-color: #f8f9fa;
-        border-left: 4px solid #8B0000;
+        color: #212529 !important;
+        border-left: 5px solid #8B0000;
         padding: 15px;
         border-radius: 4px;
         margin-bottom: 20px;
         line-height: 1.6;
     }
+    .instruction-box h4 {
+        color: #8B0000 !important;
+        margin-top: 0;
+        margin-bottom: 10px;
+        font-weight: bold;
+    }
+    .instruction-box p {
+        color: #212529 !important;
+        margin-bottom: 0;
+    }
     div.stButton > button:first-child {
         background-color: #A52A2A;
-        color: white;
+        color: white !important;
         border-radius: 6px;
         border: none;
         font-weight: bold;
@@ -49,7 +60,7 @@ st.markdown("""
     }
     div.stButton > button:first-child:hover {
         background-color: #8B0000;
-        color: white;
+        color: white !important;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -223,15 +234,11 @@ else:
                     )
                     st.plotly_chart(fig, use_container_width=True)
 
-                # ----------------------------------------------------
-                # 統合された「AI面接評価・詳細ガイドメモ」の自動生成ロジック
-                # ----------------------------------------------------
                 st.markdown("---")
                 st.markdown("### 📝 AI面接統合評価＆詳細分析メモ")
                 
                 saved_memo = selected_candidate.get("ai_memo", "")
                 
-                # 保存済みメモがない場合、思考特性に応じた詳細評価レポートを自動入力
                 if not saved_memo:
                     if "Fi" in candidate_types or "寄り添" in candidate_text or "患者" in candidate_text:
                         default_memo = (
@@ -265,7 +272,6 @@ else:
                 else:
                     default_memo = saved_memo
 
-                # 1つの統合されたテキストエリアに表示・編集
                 memo_input = st.text_area("AI詳細分析ガイド 兼 面接評価メモ", value=default_memo, height=200)
                 
                 btn_c1, btn_c2 = st.columns([1, 1])
