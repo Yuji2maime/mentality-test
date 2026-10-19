@@ -112,70 +112,107 @@ try:
             for k in scores_dict:
                 scores_dict[k] = max(40, min(95, scores_dict[k]))
 
-            # --- メインレイアウト ---
-            col_left, col_right = st.columns([1.1, 1])
-            
-            with col_left:
-                st.markdown(f"### 👤 応募者氏名: **{selected_candidate.get('name')}**")
-                st.markdown("#### 【事前記述内容】")
-                st.info(candidate_text if candidate_text else "記述内容がありません。")
+            categories = ['Te (効率)', 'Ti (論理)', 'Fe (調和)', 'Fi (内省)', 'Se (実行)', 'Ni (直観)']
+            values = [
+                scores_dict['Te'],
+                scores_dict['Ti'],
+                scores_dict['Fe'],
+                scores_dict['Fi'],
+                scores_dict['Se'],
+                scores_dict['Ni']
+            ]
+
+            # ----------------------------------------------------
+            # 区分1：【応募者用（確認専用画面）】の独立レイアウト
+            # ----------------------------------------------------
+            if mode == "応募者用（確認専用画面）":
+                st.subheader(f"👤 {selected_candidate.get('name')} 様の思考特性・認知傾向フィードバック")
                 
                 types_info = selected_candidate.get("types", "情報なし")
-                st.markdown("#### 【判定タイプ & 認知特性スコア】")
                 st.markdown(f'<div class="type-box">判定タイプ / 補助特性: {types_info}</div>', unsafe_allow_html=True)
                 
-                c1, c2, c3 = st.columns(3)
-                c1.metric("Te (効率)", f"{scores_dict['Te']}点")
-                c2.metric("Ti (論理)", f"{scores_dict['Ti']}点")
-                c3.metric("Fe (調和)", f"{scores_dict['Fe']}点")
-                c1.metric("Fi (内省)", f"{scores_dict['Fi']}点")
-                c2.metric("Se (実行)", f"{scores_dict['Se']}点")
-                c3.metric("Ni (直観)", f"{scores_dict['Ni']}点")
+                c_chart, c_score = st.columns([1.2, 1])
+                
+                with c_chart:
+                    st.markdown("#### 【思考特性レーダーチャート】")
+                    fig = go.Figure(data=go.Scatterpolar(
+                        r=values + [values[0]],
+                        theta=categories + [categories[0]],
+                        fill='toself',
+                        fillcolor='rgba(139, 0, 0, 0.35)',
+                        line=dict(color='#8B0000', width=2)
+                    ))
+                    fig.update_layout(
+                        polar=dict(radialaxis=dict(visible=True, range=[0, 100])),
+                        showlegend=False,
+                        margin=dict(l=40, r=40, t=20, b=20),
+                        height=350
+                    )
+                    st.plotly_chart(fig, use_container_width=True)
 
-            with col_right:
-                st.markdown("#### 【思考特性レーダーチャート】")
-                
-                categories = ['Te (効率)', 'Ti (論理)', 'Fe (調和)', 'Fi (内省)', 'Se (実行)', 'Ni (直観)']
-                values = [
-                    scores_dict['Te'],
-                    scores_dict['Ti'],
-                    scores_dict['Fe'],
-                    scores_dict['Fi'],
-                    scores_dict['Se'],
-                    scores_dict['Ni']
-                ]
-                
-                fig = go.Figure(data=go.Scatterpolar(
-                    r=values + [values[0]],
-                    theta=categories + [categories[0]],
-                    fill='toself',
-                    fillcolor='rgba(139, 0, 0, 0.4)',
-                    line=dict(color='#8B0000', width=2)
-                ))
-                
-                fig.update_layout(
-                    polar=dict(
-                        radialaxis=dict(visible=True, range=[0, 100])
-                    ),
-                    showlegend=False,
-                    margin=dict(l=40, r=40, t=30, b=30),
-                    height=360
-                )
-                
-                st.plotly_chart(fig, use_container_width=True)
+                with c_score:
+                    st.markdown("#### 【認知特性スコア一覧】")
+                    m1, m2 = st.columns(2)
+                    m1.metric("Te (効率)", f"{scores_dict['Te']}点")
+                    m2.metric("Ti (論理)", f"{scores_dict['Ti']}点")
+                    m1.metric("Fe (調和)", f"{scores_dict['Fe']}点")
+                    m2.metric("Fi (内省)", f"{scores_dict['Fi']}点")
+                    m1.metric("Se (実行)", f"{scores_dict['Se']}点")
+                    m2.metric("Ni (直観)", f"{scores_dict['Ni']}点")
 
-            # 思考特性に基づく自動初期コメントの生成
-            default_memo = selected_candidate.get("ai_memo", "")
-            if not default_memo:
-                if "Fi" in candidate_types or "寄り添" in candidate_text or "患者" in candidate_text:
-                    default_memo = f"【自動思考分析・面接ガイド】\n■強み: 相手の気持ちや個別の価値観に深く寄り添う対人共感力（Fi/Fe要素）が非常に高めです。\n■面接時確認点: 感情移入しすぎて組織のルールや客観的判断との間で葛藤を抱えないか、ストレス耐性・業務割り切り度合いを確認してください。"
-                elif "Te" in candidate_types or "論理" in candidate_text or "合理" in candidate_text:
-                    default_memo = f"【自動思考分析・面接ガイド】\n■強み: 目的達成や効率・合理的な思考（Te/Ti要素）が優れています。\n■面接時確認点: 正論や効率を重視するあまり、周囲との協調や感情面への配慮がおろそかにならないか確認してください。"
-                else:
-                    default_memo = f"【自動思考分析・面接ガイド】\n■思考傾向: 自身の記述・思考タイプに基づいた適性バランス型です。\n■面接時確認点: 過去の具体的な行動エピソードに基づき、チームワークと主導権発揮のバランスを確認してください。"
+                st.markdown("#### 【提出された事前記述内容】")
+                st.info(candidate_text if candidate_text else "記述内容がありません。")
 
-            # --- モード別の表示制御 ---
-            if mode == "面接官用（評価・入力画面）":
+            # ----------------------------------------------------
+            # 区分2：【面接官用（評価・入力画面）】の評価レイアウト
+            # ----------------------------------------------------
+            else:
+                col_left, col_right = st.columns([1.1, 1])
+                
+                with col_left:
+                    st.markdown(f"### 👤 応募者氏名: **{selected_candidate.get('name')}**")
+                    st.markdown("#### 【事前記述内容】")
+                    st.info(candidate_text if candidate_text else "記述内容がありません。")
+                    
+                    types_info = selected_candidate.get("types", "情報なし")
+                    st.markdown("#### 【判定タイプ & 認知特性スコア】")
+                    st.markdown(f'<div class="type-box">判定タイプ / 補助特性: {types_info}</div>', unsafe_allow_html=True)
+                    
+                    c1, c2, c3 = st.columns(3)
+                    c1.metric("Te (効率)", f"{scores_dict['Te']}点")
+                    c2.metric("Ti (論理)", f"{scores_dict['Ti']}点")
+                    c3.metric("Fe (調和)", f"{scores_dict['Fe']}点")
+                    c1.metric("Fi (内省)", f"{scores_dict['Fi']}点")
+                    c2.metric("Se (実行)", f"{scores_dict['Se']}点")
+                    c3.metric("Ni (直観)", f"{scores_dict['Ni']}点")
+
+                with col_right:
+                    st.markdown("#### 【思考特性レーダーチャート】")
+                    fig = go.Figure(data=go.Scatterpolar(
+                        r=values + [values[0]],
+                        theta=categories + [categories[0]],
+                        fill='toself',
+                        fillcolor='rgba(139, 0, 0, 0.4)',
+                        line=dict(color='#8B0000', width=2)
+                    ))
+                    fig.update_layout(
+                        polar=dict(radialaxis=dict(visible=True, range=[0, 100])),
+                        showlegend=False,
+                        margin=dict(l=40, r=40, t=30, b=30),
+                        height=360
+                    )
+                    st.plotly_chart(fig, use_container_width=True)
+
+                # 初期メモのセット
+                default_memo = selected_candidate.get("ai_memo", "")
+                if not default_memo:
+                    if "Fi" in candidate_types or "寄り添" in candidate_text or "患者" in candidate_text:
+                        default_memo = f"【自動思考分析・面接ガイド】\n■強み: 相手の気持ちや個別の価値観に深く寄り添う対人共感力（Fi/Fe要素）が非常・高めです。\n■面接時確認点: 感情移入しすぎて組織のルールや客観的判断との間で葛藤を抱えないか、ストレス耐性・業務割り切り度合いを確認してください。"
+                    elif "Te" in candidate_types or "論理" in candidate_text or "合理" in candidate_text:
+                        default_memo = f"【自動思考分析・面接ガイド】\n■強み: 目的達成や効率・合理的な思考（Te/Ti要素）が優れています。\n■面接時確認点: 正論や効率を重視するあまり、周囲との協調や感情面への配慮がおろそかにならないか確認してください。"
+                    else:
+                        default_memo = f"【自動思考分析・面接ガイド】\n■思考傾向: 自身の記述・思考タイプに基づいた適性バランス型です。\n■面接時確認点: 過去の具体的な行動エピソードに基づき、チームワークと主導権発揮のバランスを確認してください。"
+
                 st.markdown("---")
                 st.markdown("### 📝 面接評価・AI分析メモ")
                 
@@ -197,8 +234,7 @@ try:
                             else:
                                 st.info("【内蔵分析エンジン結果】")
                                 st.write(f"**{selected_name}様の深掘りポイント:**記述「{candidate_text}」より、対人共感性と個の価値観を重視する傾向が見られます。チーム内でのロールや対人トラブル時の対処方法を具体的に聞いてみましょう。")
-                        except Exception as e:
-                            # APIエラー発生時のフォールバック処理（エラーメッセージを出さずに役立つアドバイスを表示）
+                        except Exception:
                             st.info("【自動評価分析結果】")
                             st.write(f"**{selected_name}様の面接深掘りアドバイス:**\n・記述内容: 「{candidate_text}」\n・注目点: 言葉選びから相手への配慮（共感性）が高く示されています。\n・面接質問例: 「価値観が合わないチームメンバーと協働する際、どのように意思疎通を図りますか？」")
 
@@ -218,10 +254,6 @@ try:
                             st.rerun()
                         except Exception as e:
                             st.error(f"削除エラー: {e}")
-            else:
-                # 応募者用（確認専用画面）
-                st.markdown("---")
-                st.info("💡 【応募者確認用表示】（メモ・AI評価機能は非表示になっています）")
 
     else:
         st.info("登録されている応募者データがありません。")
