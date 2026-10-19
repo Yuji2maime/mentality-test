@@ -6,12 +6,12 @@ import plotly.graph_objects as go
 
 # 1. ページ基本設定
 st.set_page_config(
-    page_title="【当日用】面接・思考性評価システム",
+    page_title="思考・表現力セッション",
     page_icon="🔴",
     layout="wide"
 )
 
-# カスタムCSS（デザイン・レイアウト最適化）
+# カスタムCSS（赤系テーマ・カードデザイン）
 st.markdown("""
 <style>
     .day-banner {
@@ -21,23 +21,23 @@ st.markdown("""
         border-radius: 6px;
         font-weight: bold;
         font-size: 1.1rem;
-        margin-bottom: 15px;
+        margin-bottom: 20px;
     }
     .day-title {
         color: #8B0000;
         border-bottom: 3px solid #8B0000;
         padding-bottom: 6px;
         margin-bottom: 15px;
-        font-size: 1.5rem;
+        font-size: 1.6rem;
         font-weight: bold;
     }
-    .type-box {
-        background-color: #f1f3f5;
+    .instruction-box {
+        background-color: #f8f9fa;
         border-left: 4px solid #8B0000;
-        padding: 10px 15px;
+        padding: 15px;
         border-radius: 4px;
-        margin-bottom: 15px;
-        font-weight: bold;
+        margin-bottom: 20px;
+        line-height: 1.6;
     }
     div.stButton > button:first-child {
         background-color: #A52A2A;
@@ -54,23 +54,8 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# 🔴 サイドバー（モード切替＆免責事項・注意事項）
-st.sidebar.title("📌 メニュー・設定")
-mode = st.sidebar.radio("画面表示モード", ["面接官用（評価・入力画面）", "応募者用（確認専用画面）"])
-
-st.sidebar.markdown("---")
-st.sidebar.subheader("⚠️ 利用上の注意・免責事項")
-st.sidebar.info("""
-- **判定結果の位置付け**
-  本システムの思考性・認知特性分析は、応募者の自己申告テキストに基づく傾向分析であり、人物像や能力を確定するものではありません。
-- **面接時の活用方法**
-  評価の絶対的な基準とせず、面接における深掘り質問の参考材料（補助ツール）としてご活用ください。
-- **個人情報の管理**
-  採用選考以外の目的での使用、および第三者への漏洩・共有は厳禁です。
-""")
-
 # ヘッダーバナー
-st.markdown('<div class="day-banner">🔴 【当日用・面接評価モード】 思考・表現力セッション</div>', unsafe_allow_html=True)
+st.markdown('<div class="day-banner">🔴 【当日用】 思考・表現力セッション</div>', unsafe_allow_html=True)
 
 # Supabase初期化
 @st.cache_resource
@@ -82,91 +67,103 @@ try:
 except Exception as e:
     st.error(f"Supabase接続エラー: {e}")
 
-st.markdown('<h1 class="day-title">【当日用】面接・思考性評価システム</h1>', unsafe_allow_html=True)
+# Gemini API初期化
+if "GEMINI_API_KEY" in st.secrets:
+    try:
+        raw_key = str(st.secrets["GEMINI_API_KEY"]).strip().strip('"').strip("'")
+        genai.configure(api_key=raw_key)
+    except Exception:
+        pass
 
-# データ取得
-try:
-    response = supabase.table("candidate_responses").select("*").execute()
-    data = response.data
+# ----------------------------------------------------
+# サイドバー：管理者ログイン・管理切替
+# ----------------------------------------------------
+st.sidebar.title("🔒 管理者メニュー")
+admin_expander = st.sidebar.expander("採用側（管理）画面へ切替", expanded=False)
+
+with admin_expander:
+    password_input = st.text_input("管理者パスワード", type="password")
+    is_admin = (password_input == "7777")
+    if password_input and not is_admin:
+        st.error("パスワードが正しくありません")
+    elif is_admin:
+        st.success("管理者としてログイン中")
+
+# ----------------------------------------------------
+# A. 応募者入力画面（ログインしていない初期画面）
+# ----------------------------------------------------
+if not is_admin:
+    st.markdown('<h1 class="day-title">思考・表現力アンケート入力フォーム</h1>', unsafe_allow_html=True)
     
-    if data:
-        names = [item.get("name", "無名") for item in data]
-        selected_name = st.selectbox("対象の応募者を選択してください", names)
-        selected_candidate = next((item for item in data if item.get("name") == selected_name), None)
+    # 目的の説明書き
+    st.markdown("""
+    <div class="instruction-box">
+        <h4>【ご回答にあたってのお願い】</h4>
+        <p>本アンケートは、皆様の日常的な考え方や仕事における思考傾向を把握し、相互の理解を深めるためのものです。<br>
+        正解・不正解はありませんので、ご自身の率直なお考え・お気持ちをそのままご記入ください。</p>
+    </div>
+    """, unsafe_allow_html=True)
+
+    with st.form(key="candidate_form"):
+        applicant_name = st.text_input("お名前（氏名）", placeholder="例：山田 太郎")
+        applicant_text = st.text_area("思考・表現力に関する記述", height=150, placeholder="ご自身の考えや価値観、仕事で大切にしていること等を自由にご記入ください。")
         
-        if selected_candidate:
-            record_id = selected_candidate.get("id")
-            candidate_text = selected_candidate.get("text", "")
-            candidate_types = str(selected_candidate.get("types", ""))
+        submit_button = st.form_submit_button(label="提出する")
+
+    if submit_button:
+        if not applicant_name.strip() or not applicant_text.strip():
+            st.warning("お名前と記述内容の両方を入力してください。")
+        else:
+            try:
+                # タイプ仮判定（簡易判定）
+                types_val = ["Fi型（価値観・内省）", "補助Fe"] if "共感" in applicant_text or "患者" in applicant_text or "寄り添" in applicant_text else ["Te型（効率・構造化）", "補助Ti"]
+                
+                new_data = {
+                    "name": applicant_name.strip(),
+                    "text": applicant_text.strip(),
+                    "types": types_val
+                }
+                
+                supabase.table("candidate_responses").insert(new_data).execute()
+                
+                st.success("提出が完了いたしました。ご協力ありがとうございました！")
+                st.info("※入力内容は正常に送信されました。この画面を閉じていただいて構いません。")
+            except Exception as e:
+                st.error(f"送信時にエラーが発生しました: {e}")
+
+# ----------------------------------------------------
+# B. 管理者画面（パスワード "7777" でログイン後）
+# ----------------------------------------------------
+else:
+    st.markdown('<h1 class="day-title">【管理者用】面接・思考性評価システム</h1>', unsafe_allow_html=True)
+    
+    try:
+        response = supabase.table("candidate_responses").select("*").execute()
+        data = response.data
+        
+        if data:
+            names = [item.get("name", "無名") for item in data]
+            selected_name = st.selectbox("評価・確認する応募者を選択してください", names)
+            selected_candidate = next((item for item in data if item.get("name") == selected_name), None)
             
-            # スコア算出ロジック
-            base_score = 55 + (len(candidate_text) % 20)
-            scores_dict = {
-                "Te": base_score if "Te" in candidate_types else base_score - 10,
-                "Ti": base_score + 10 if "Ti" in candidate_types or "論理" in candidate_text else base_score - 5,
-                "Fe": base_score + 5 if "Fe" in candidate_types or "患者" in candidate_text or "痛み" in candidate_text else base_score - 10,
-                "Fi": base_score + 15 if "Fi" in candidate_types or "心" in candidate_text or "寄り添" in candidate_text else base_score,
-                "Se": base_score - 5 if "Se" in candidate_types else base_score - 15,
-                "Ni": base_score if "Ni" in candidate_types else base_score - 5
-            }
-            for k in scores_dict:
-                scores_dict[k] = max(40, min(95, scores_dict[k]))
-
-            categories = ['Te (効率)', 'Ti (論理)', 'Fe (調和)', 'Fi (内省)', 'Se (実行)', 'Ni (直観)']
-            values = [
-                scores_dict['Te'],
-                scores_dict['Ti'],
-                scores_dict['Fe'],
-                scores_dict['Fi'],
-                scores_dict['Se'],
-                scores_dict['Ni']
-            ]
-
-            # ----------------------------------------------------
-            # 区分1：【応募者用（確認専用画面）】の独立レイアウト
-            # ----------------------------------------------------
-            if mode == "応募者用（確認専用画面）":
-                st.subheader(f"👤 {selected_candidate.get('name')} 様の思考特性・認知傾向フィードバック")
+            if selected_candidate:
+                record_id = selected_candidate.get("id")
+                candidate_text = selected_candidate.get("text", "")
+                candidate_types = str(selected_candidate.get("types", ""))
                 
-                types_info = selected_candidate.get("types", "情報なし")
-                st.markdown(f'<div class="type-box">判定タイプ / 補助特性: {types_info}</div>', unsafe_allow_html=True)
-                
-                c_chart, c_score = st.columns([1.2, 1])
-                
-                with c_chart:
-                    st.markdown("#### 【思考特性レーダーチャート】")
-                    fig = go.Figure(data=go.Scatterpolar(
-                        r=values + [values[0]],
-                        theta=categories + [categories[0]],
-                        fill='toself',
-                        fillcolor='rgba(139, 0, 0, 0.35)',
-                        line=dict(color='#8B0000', width=2)
-                    ))
-                    fig.update_layout(
-                        polar=dict(radialaxis=dict(visible=True, range=[0, 100])),
-                        showlegend=False,
-                        margin=dict(l=40, r=40, t=20, b=20),
-                        height=350
-                    )
-                    st.plotly_chart(fig, use_container_width=True)
+                # スコア算出
+                base_score = 55 + (len(candidate_text) % 20)
+                scores_dict = {
+                    "Te": base_score if "Te" in candidate_types else base_score - 10,
+                    "Ti": base_score + 10 if "Ti" in candidate_types or "論理" in candidate_text else base_score - 5,
+                    "Fe": base_score + 5 if "Fe" in candidate_types or "患者" in candidate_text or "痛み" in candidate_text else base_score - 10,
+                    "Fi": base_score + 15 if "Fi" in candidate_types or "心" in candidate_text or "寄り添" in candidate_text else base_score,
+                    "Se": base_score - 5 if "Se" in candidate_types else base_score - 15,
+                    "Ni": base_score if "Ni" in candidate_types else base_score - 5
+                }
+                for k in scores_dict:
+                    scores_dict[k] = max(40, min(95, scores_dict[k]))
 
-                with c_score:
-                    st.markdown("#### 【認知特性スコア一覧】")
-                    m1, m2 = st.columns(2)
-                    m1.metric("Te (効率)", f"{scores_dict['Te']}点")
-                    m2.metric("Ti (論理)", f"{scores_dict['Ti']}点")
-                    m1.metric("Fe (調和)", f"{scores_dict['Fe']}点")
-                    m2.metric("Fi (内省)", f"{scores_dict['Fi']}点")
-                    m1.metric("Se (実行)", f"{scores_dict['Se']}点")
-                    m2.metric("Ni (直観)", f"{scores_dict['Ni']}点")
-
-                st.markdown("#### 【提出された事前記述内容】")
-                st.info(candidate_text if candidate_text else "記述内容がありません。")
-
-            # ----------------------------------------------------
-            # 区分2：【面接官用（評価・入力画面）】の評価レイアウト
-            # ----------------------------------------------------
-            else:
                 col_left, col_right = st.columns([1.1, 1])
                 
                 with col_left:
@@ -176,7 +173,7 @@ try:
                     
                     types_info = selected_candidate.get("types", "情報なし")
                     st.markdown("#### 【判定タイプ & 認知特性スコア】")
-                    st.markdown(f'<div class="type-box">判定タイプ / 補助特性: {types_info}</div>', unsafe_allow_html=True)
+                    st.write(f"判定タイプ / 補助特性: `{types_info}`")
                     
                     c1, c2, c3 = st.columns(3)
                     c1.metric("Te (効率)", f"{scores_dict['Te']}点")
@@ -188,6 +185,11 @@ try:
 
                 with col_right:
                     st.markdown("#### 【思考特性レーダーチャート】")
+                    categories = ['Te (効率)', 'Ti (論理)', 'Fe (調和)', 'Fi (内省)', 'Se (実行)', 'Ni (直観)']
+                    values = [
+                        scores_dict['Te'], scores_dict['Ti'], scores_dict['Fe'],
+                        scores_dict['Fi'], scores_dict['Se'], scores_dict['Ni']
+                    ]
                     fig = go.Figure(data=go.Scatterpolar(
                         r=values + [values[0]],
                         theta=categories + [categories[0]],
@@ -203,20 +205,15 @@ try:
                     )
                     st.plotly_chart(fig, use_container_width=True)
 
-                # 初期メモのセット
+                # 初期メモ
                 default_memo = selected_candidate.get("ai_memo", "")
                 if not default_memo:
-                    if "Fi" in candidate_types or "寄り添" in candidate_text or "患者" in candidate_text:
-                        default_memo = f"【自動思考分析・面接ガイド】\n■強み: 相手の気持ちや個別の価値観に深く寄り添う対人共感力（Fi/Fe要素）が非常・高めです。\n■面接時確認点: 感情移入しすぎて組織のルールや客観的判断との間で葛藤を抱えないか、ストレス耐性・業務割り切り度合いを確認してください。"
-                    elif "Te" in candidate_types or "論理" in candidate_text or "合理" in candidate_text:
-                        default_memo = f"【自動思考分析・面接ガイド】\n■強み: 目的達成や効率・合理的な思考（Te/Ti要素）が優れています。\n■面接時確認点: 正論や効率を重視するあまり、周囲との協調や感情面への配慮がおろそかにならないか確認してください。"
-                    else:
-                        default_memo = f"【自動思考分析・面接ガイド】\n■思考傾向: 自身の記述・思考タイプに基づいた適性バランス型です。\n■面接時確認点: 過去の具体的な行動エピソードに基づき、チームワークと主導権発揮のバランスを確認してください。"
+                    default_memo = f"【面接ガイド】\n■思考傾向: {types_info}\n■面接確認点: ご本人の記述内容に基づき、具体例（行動エピソード）や価値観の背景を深く質問してください。"
 
                 st.markdown("---")
                 st.markdown("### 📝 面接評価・AI分析メモ")
                 
-                memo_input = st.text_area("面接中の所感・メモ・質問事項", value=default_memo, height=140)
+                memo_input = st.text_area("評価メモ・確認事項", value=default_memo, height=140)
                 
                 btn_col1, btn_col2, btn_col3 = st.columns(3)
                 
@@ -232,11 +229,9 @@ try:
                                 st.success("AI詳細分析が完了しました")
                                 st.write(res.text)
                             else:
-                                st.info("【内蔵分析エンジン結果】")
-                                st.write(f"**{selected_name}様の深掘りポイント:**記述「{candidate_text}」より、対人共感性と個の価値観を重視する傾向が見られます。チーム内でのロールや対人トラブル時の対処方法を具体的に聞いてみましょう。")
+                                st.info(f"**{selected_name}様の深掘りポイント:** 記述内容から対人共感性が窺えます。チームワーク時の役割や課題解決行動を聞いてみましょう。")
                         except Exception:
-                            st.info("【自動評価分析結果】")
-                            st.write(f"**{selected_name}様の面接深掘りアドバイス:**\n・記述内容: 「{candidate_text}」\n・注目点: 言葉選びから相手への配慮（共感性）が高く示されています。\n・面接質問例: 「価値観が合わないチームメンバーと協働する際、どのように意思疎通を図りますか？」")
+                            st.info(f"**{selected_name}様の面接質問例:** 「過去に周囲と協働して成果を出した具体的なエピソードを教えてください。」")
 
                 with btn_col2:
                     if st.button("💾 メモを保存する"):
@@ -255,7 +250,7 @@ try:
                         except Exception as e:
                             st.error(f"削除エラー: {e}")
 
-    else:
-        st.info("登録されている応募者データがありません。")
-except Exception as e:
-    st.error(f"データ取得エラー: {e}")
+        else:
+            st.info("登録されている応募者データがありません。")
+    except Exception as e:
+        st.error(f"データ取得エラー: {e}")
