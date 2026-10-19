@@ -55,7 +55,7 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # ヘッダーバナー
-st.markdown('<div class="day-banner">🔴 【当日用】 思考・表現力セッション</div>', unsafe_allow_html=True)
+st.markdown('<div class="day-banner">🔴 思考・表現力セッション</div>', unsafe_allow_html=True)
 
 # Supabase初期化
 @st.cache_resource
@@ -75,24 +75,45 @@ if "GEMINI_API_KEY" in st.secrets:
     except Exception:
         pass
 
-# ----------------------------------------------------
-# サイドバー：管理者ログイン・管理切替
-# ----------------------------------------------------
-st.sidebar.title("🔒 管理者メニュー")
-admin_expander = st.sidebar.expander("採用側（管理）画面へ切替", expanded=False)
+# セッション状態の初期化（管理者のログイン状態を保持）
+if "is_admin" not in st.session_state:
+    st.session_state.is_admin = False
 
-with admin_expander:
-    password_input = st.text_input("管理者パスワード", type="password")
-    is_admin = (password_input == "7777")
-    if password_input and not is_admin:
-        st.error("パスワードが正しくありません")
-    elif is_admin:
-        st.success("管理者としてログイン中")
+# ----------------------------------------------------
+# サイドバー：メニュー、管理者ログイン/ログアウト、免責事項
+# ----------------------------------------------------
+st.sidebar.title("📌 メニュー・設定")
+
+if not st.session_state.is_admin:
+    st.sidebar.subheader("🔒 管理者ログイン")
+    password_input = st.sidebar.text_input("パスワードを入力", type="password")
+    if st.sidebar.button("ログイン"):
+        if password_input == "7777":
+            st.session_state.is_admin = True
+            st.rerun()
+        else:
+            st.sidebar.error("パスワードが違います")
+else:
+    st.sidebar.success("管理者としてログイン中")
+    if st.sidebar.button("🔄 応募者画面へ戻る（ログアウト）"):
+        st.session_state.is_admin = False
+        st.rerun()
+
+st.sidebar.markdown("---")
+st.sidebar.subheader("⚠️ 注意事項・禁止事項・免責事項")
+st.sidebar.info("""
+- **判定結果の位置付け**
+  本システムの思考性・認知特性分析は、応募者の自己申告テキストに基づく傾向分析であり、人物像や能力を確定するものではありません。
+- **面接時の活用方法**
+  評価の絶対的な基準とせず、面接における深掘り質問の参考材料（補助ツール）としてご活用ください。
+- **個人情報の管理・禁止事項**
+  採用選考以外の目的での使用、および第三者への無断漏洩・共有は厳禁です。
+""")
 
 # ----------------------------------------------------
 # A. 応募者入力画面（ログインしていない初期画面）
 # ----------------------------------------------------
-if not is_admin:
+if not st.session_state.is_admin:
     st.markdown('<h1 class="day-title">思考・表現力アンケート入力フォーム</h1>', unsafe_allow_html=True)
     
     # 目的の説明書き
@@ -115,7 +136,6 @@ if not is_admin:
             st.warning("お名前と記述内容の両方を入力してください。")
         else:
             try:
-                # タイプ仮判定（簡易判定）
                 types_val = ["Fi型（価値観・内省）", "補助Fe"] if "共感" in applicant_text or "患者" in applicant_text or "寄り添" in applicant_text else ["Te型（効率・構造化）", "補助Ti"]
                 
                 new_data = {
@@ -151,7 +171,6 @@ else:
                 candidate_text = selected_candidate.get("text", "")
                 candidate_types = str(selected_candidate.get("types", ""))
                 
-                # スコア算出
                 base_score = 55 + (len(candidate_text) % 20)
                 scores_dict = {
                     "Te": base_score if "Te" in candidate_types else base_score - 10,
@@ -205,7 +224,6 @@ else:
                     )
                     st.plotly_chart(fig, use_container_width=True)
 
-                # 初期メモ
                 default_memo = selected_candidate.get("ai_memo", "")
                 if not default_memo:
                     default_memo = f"【面接ガイド】\n■思考傾向: {types_info}\n■面接確認点: ご本人の記述内容に基づき、具体例（行動エピソード）や価値観の背景を深く質問してください。"
