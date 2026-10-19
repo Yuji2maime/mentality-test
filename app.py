@@ -74,9 +74,9 @@ if "GEMINI_API_KEY" in st.secrets:
 st.markdown('<h1 class="day-title">【当日用】面接・思考性評価システム</h1>', unsafe_allow_html=True)
 st.write("※こちらは当日実施用の評価・入力画面です。事前に提出されたデータを確認の上、面接評価・AI分析を行ってください。")
 
-# 応募者データの取得・表示ロジック
+# 応募者データの取得・表示ロジック（※テーブル名を 'candidate_responses' に修正済み）
 try:
-    response = supabase.table("candidates").select("*").execute()
+    response = supabase.table("candidate_responses").select("*").execute()
     data = response.data
     
     if data:
@@ -91,8 +91,10 @@ try:
             st.markdown("### 【事前記述内容】")
             st.info(selected_candidate.get("text", "記述内容がありません。"))
             
-            # スコアの取得
+            # スコアの取得（存在しない場合はデフォルト値）
             scores = selected_candidate.get("scores", {"Te": 35, "Ti": 35, "Fe": 35, "Fi": 35, "Se": 35, "Ni": 35})
+            if not isinstance(scores, dict):
+                scores = {"Te": 35, "Ti": 35, "Fe": 35, "Fi": 35, "Se": 35, "Ni": 35}
             
             st.markdown("### 【認知特性・思考傾向分析】")
             cols = st.columns(6)
