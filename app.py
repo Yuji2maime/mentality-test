@@ -6,7 +6,7 @@ import plotly.graph_objects as go
 
 # 1. ページ基本設定
 st.set_page_config(
-    page_title="思考・表現力セッション",
+    page_title="思考・表現力セッション（当日用）",
     page_icon="🔴",
     layout="wide"
 )
@@ -79,16 +79,128 @@ except Exception as e:
     st.error(f"Supabase接続エラー: {e}")
 
 # Gemini API初期化
+gemini_ready = False
 if "GEMINI_API_KEY" in st.secrets:
     try:
         raw_key = str(st.secrets["GEMINI_API_KEY"]).strip().strip('"').strip("'")
         genai.configure(api_key=raw_key)
+        gemini_ready = True
     except Exception:
-        pass
+        gemini_ready = False
 
 # セッション状態の初期化
 if "is_admin" not in st.session_state:
     st.session_state.is_admin = False
+
+# ----------------------------------------------------
+# 補助関数：タイプ判定とスコア計算
+# ----------------------------------------------------
+def analyze_text_simple(text):
+    judging = "Te型（効率・構造化）" if any(w in text for w in ["効率", "計画", "目標", "構造", "成果", "システム"]) else \
+              "Ti型（論理・分析）" if any(w in text for w in ["論理", "分析", "仕組み", "本質", "理由"]) else \
+              "Fe型（調和・配慮）" if any(w in text for w in ["調和", "チーム", "協力", "感謝", "配慮"]) else \
+              "Fi型（価値観・内省）"
+    
+    perceiving = "Se（現場・実行）" if any(w in text for w in ["行動", "現場", "実践", "体験", "スピード"]) else \
+                 "Si（経験・確実）" if any(w in text for w in ["経験", "規則", "確実", "継続", "積み重ね"]) else \
+                 "Ne（アイデア・可能性）" if any(w in text for w in ["発想", "アイデア", "挑戦", "可能性", "変化"]) else \
+                 "Ni（本質・洞察）"
+                 
+    return [judging, f"補助{perceiving}"]
+
+def calculate_scores(text, types_list):
+    types_str = " ".join(types_list)
+    base = 55 + (len(text) % 15)
+    
+    scores = {
+        "Te": base + 15 if "Te" in types_str or any(w in text for w in ["効率", "目標", "計画"]) else base - 10,
+        "Ti": base + 10 if "Ti" in types_str or any(w in text for w in ["論理", "分析", "仕組み"]) else base - 5,
+        "Fe": base + 10 if "Fe" in types_str or any(w in text for w in ["調和", "協力", "感謝"]) else base - 10,
+        "Fi": base + 15 if "Fi" in types_str or any(w in text for w in ["価値観", "想い", "寄り添"]) else base - 5,
+        "Se": base + 10 if "Se" in types_str or any(w in text for w in ["行動", "現場", "実践"]) else base - 10,
+        "Si": base + 10 if "Si" in types_str or any(w in text for w in ["経験", "規則", "確実"]) else base - 10,
+        "Ne": base + 10 if "Ne" in types_str or any(w in text for w in ["発想", "挑戦", "変化"]) else base - 10,
+        "Ni": base + 10 if "Ni" in types_str or any(w in text for w in ["洞察", "未来", "ビジョン"]) else base - 10,
+    }
+    
+    for k in scores:
+        scores[k] = max(35, min(95, scores[k]))
+    return scores
+
+# Gemini安全生成関数（当日用：採用可否＆配属活用レポート）
+def generate_gemini_report_day(name, text):
+    prompt = f"""
+あなたは人事採用・組織開発の専門家です。
+以下の応募者のアンケート記述内容を評価・分析し、面接官が最終選考および配属判断で使用するための「選考評価＆配属活用レポート」を作成してください。
+
+【応募者氏名】: {name}
+【記述内容】:
+"{text}"
+
+【出力フォーマット（必ずこの形式で出力してください）】:
+【AI選考評価＆配属活用レポート】
+■ 思考傾向・特性:
+（記述内容から読み取れる思考パターンや能力傾向を評価。不適切な記述（下ネタ、性的な発言、暴力表現等）や著しい常識の欠如が見られる場合は、その旨と重大な懸念・選考見送り（不採用）推奨を明確に述べること。）
+
+■ 採用可否にあたっての判断軸:
+（合否決定時に重視すべきポイントや自社文化とのマッチング上の留意点を記述）
+
+■ 採用後の配属・活用アプローチ:
+・適性配属: （強みが活きる具体的な部署や職種・役割を提案）
+・育成のコツ: （入社後に能力を引き出すためのコミュニケーション・マネジメント手法）
+
+■ 選考最終所感・面接官メモ（以下に最終判断や申し送り事項を自由にお書きください）:
+"""
+    try:
+        available_models = []
+        for m in genai.list_models():
+            if 'generateContent' in m.supported_generation_methods:
+                available_models.append(m.name)
+        
+        for model_name in available_models:
+            try:
+                model = genai.GenerativeModel(model_name)
+                res = model.generate_content(prompt)
+                if res and hasattr(res, 'text') and res.text:
+                    return res.text
+            except Exception:
+                continue
+    except Exception:
+        pass
+
+    # フォールバックエンジン
+    bad_keywords = ["セックス", "オナニー", "ブルマー", "スケベ", "暴れ", "死ね", "殺す", "風俗"]
+    if any(k in text for k in bad_keywords):
+        return (
+            f"【AI選考評価＆配属活用レポート】\n"
+            f"■ 思考傾向・特性:\n"
+            f"  【🚨 重大警告・不採用推奨】公序良俗に反する表現および就労目的から著しく逸脱した記述が含まれています。\n"
+            f"  組織のコンプライアンス維持の観点から、選考見送り（不採用）を強く推奨いたします。\n"
+            f"■ 採用可否にあたっての判断軸:\n"
+            f"  ・社会的適合性・倫理観に欠けるため、採用リスクが非常に高い状態です。\n"
+            f"■ 選考最終所感・面接官メモ（以下に最終判断や申し送り事項を自由にお書きください）:\n"
+        )
+    elif len(text) < 30:
+        return (
+            f"【AI選考評価＆配属活用レポート】\n"
+            f"■ 思考傾向・特性: 記述内容が非常に簡素であり、自己アピールや思考の具体性が不十分です。\n"
+            f"■ 採用可否にあたっての判断軸:\n"
+            f"  ・口頭での質疑を通じて、意欲や論理的思考力をしっかりと見極めた上で合否を判断してください。\n"
+            f"■ 採用後の配属・活用アプローチ:\n"
+            f"  ・適性配属: マニュアルやサポート体制が整った環境での段階的育成を推奨\n"
+            f"■ 選考最終所感・面接官メモ（以下に最終判断や申し送り事項を自由にお書きください）:\n"
+        )
+    else:
+        return (
+            f"【AI選考評価＆配属活用レポート】\n"
+            f"■ 思考傾向・特性: 記述内容に基づくバランス型の適性思考パターン\n"
+            f"■ 採用可否にあたっての判断軸:\n"
+            f"  ・多様な業務環境に対して柔軟に適応できる可能性があります。\n"
+            f"■ 採用後の配属・活用アプローチ:\n"
+            f"  ・適性配属: チーム間連携が求められる調整ポジション\n"
+            f"  ・育成のコツ: 明確な目標設定と定期的なフォローアップが有効です。\n"
+            f"■ 選考最終所感・面接官メモ（以下に最終判断や申し送り事項を自由にお書きください）:\n"
+        )
 
 # ----------------------------------------------------
 # サイドバー：メニュー、管理者ログイン/ログアウト、免責事項
@@ -122,7 +234,7 @@ st.sidebar.info("""
 """)
 
 # ----------------------------------------------------
-# A. 応募者入力画面（初期画面）
+# A. 応募者入力画面（当日提出用）
 # ----------------------------------------------------
 if not st.session_state.is_admin:
     st.markdown('<h1 class="day-title">思考・表現力アンケート入力フォーム</h1>', unsafe_allow_html=True)
@@ -135,7 +247,7 @@ if not st.session_state.is_admin:
     </div>
     """, unsafe_allow_html=True)
 
-    with st.form(key="candidate_form"):
+    with st.form(key="candidate_form_day"):
         applicant_name = st.text_input("お名前（氏名）", placeholder="例：山田 太郎")
         applicant_text = st.text_area("思考・表現力に関する記述", height=150, placeholder="ご自身の考えや価値観、仕事で大切にしていること等を自由にご記入ください。")
         
@@ -146,7 +258,7 @@ if not st.session_state.is_admin:
             st.warning("お名前と記述内容の両方を入力してください。")
         else:
             try:
-                types_val = ["Fi型（価値観・内省）", "補助Fe"] if "共感" in applicant_text or "患者" in applicant_text or "寄り添" in applicant_text else ["Te型（効率・構造化）", "補助Ti"]
+                types_val = analyze_text_simple(applicant_text.strip())
                 
                 new_data = {
                     "name": applicant_name.strip(),
@@ -163,7 +275,7 @@ if not st.session_state.is_admin:
                 st.error(f"送信時にエラーが発生しました: {e}")
 
 # ----------------------------------------------------
-# B. 管理者画面（ログイン後：採用可否＆配属検討用）
+# B. 管理者画面（最終選考・採否＆配属活用用）
 # ----------------------------------------------------
 else:
     st.markdown('<h1 class="day-title">【管理者用】面接・思考性評価システム</h1>', unsafe_allow_html=True)
@@ -180,19 +292,9 @@ else:
             if selected_candidate:
                 record_id = selected_candidate.get("id")
                 candidate_text = selected_candidate.get("text", "")
-                candidate_types = str(selected_candidate.get("types", ""))
+                candidate_types = selected_candidate.get("types", [])
                 
-                base_score = 55 + (len(candidate_text) % 20)
-                scores_dict = {
-                    "Te": base_score if "Te" in candidate_types else base_score - 10,
-                    "Ti": base_score + 10 if "Ti" in candidate_types or "論理" in candidate_text else base_score - 5,
-                    "Fe": base_score + 5 if "Fe" in candidate_types or "患者" in candidate_text or "痛み" in candidate_text else base_score - 10,
-                    "Fi": base_score + 15 if "Fi" in candidate_types or "心" in candidate_text or "寄り添" in candidate_text else base_score,
-                    "Se": base_score - 5 if "Se" in candidate_types else base_score - 15,
-                    "Ni": base_score if "Ni" in candidate_types else base_score - 5
-                }
-                for k in scores_dict:
-                    scores_dict[k] = max(40, min(95, scores_dict[k]))
+                scores_dict = calculate_scores(candidate_text, candidate_types)
 
                 col_left, col_right = st.columns([1.1, 1])
                 
@@ -201,25 +303,24 @@ else:
                     st.markdown("#### 【事前記述内容】")
                     st.info(candidate_text if candidate_text else "記述内容がありません。")
                     
-                    types_info = selected_candidate.get("types", "情報なし")
                     st.markdown("#### 【判定タイプ & 認知特性スコア】")
-                    st.write(f"判定タイプ / 補助特性: `{types_info}`")
+                    st.write(f"判定タイプ / 認知特性: `{candidate_types}`")
                     
-                    c1, c2, c3 = st.columns(3)
+                    c1, c2, c3, c4 = st.columns(4)
                     c1.metric("Te (効率)", f"{scores_dict['Te']}点")
                     c2.metric("Ti (論理)", f"{scores_dict['Ti']}点")
                     c3.metric("Fe (調和)", f"{scores_dict['Fe']}点")
-                    c1.metric("Fi (内省)", f"{scores_dict['Fi']}点")
-                    c2.metric("Se (実行)", f"{scores_dict['Se']}点")
-                    c3.metric("Ni (直観)", f"{scores_dict['Ni']}点")
+                    c4.metric("Fi (内省)", f"{scores_dict['Fi']}点")
+                    
+                    c1.metric("Se (実行)", f"{scores_dict['Se']}点")
+                    c2.metric("Si (確実)", f"{scores_dict['Si']}点")
+                    c3.metric("Ne (発想)", f"{scores_dict['Ne']}点")
+                    c4.metric("Ni (洞察)", f"{scores_dict['Ni']}点")
 
                 with col_right:
-                    st.markdown("#### 【思考特性レーダーチャート】")
-                    categories = ['Te (効率)', 'Ti (論理)', 'Fe (調和)', 'Fi (内省)', 'Se (実行)', 'Ni (直観)']
-                    values = [
-                        scores_dict['Te'], scores_dict['Ti'], scores_dict['Fe'],
-                        scores_dict['Fi'], scores_dict['Se'], scores_dict['Ni']
-                    ]
+                    st.markdown("#### 【思考・認知特性レーダーチャート】")
+                    categories = ['Te', 'Ti', 'Fe', 'Fi', 'Se', 'Si', 'Ne', 'Ni']
+                    values = [scores_dict[k] for k in categories]
                     fig = go.Figure(data=go.Scatterpolar(
                         r=values + [values[0]],
                         theta=categories + [categories[0]],
@@ -231,12 +332,12 @@ else:
                         polar=dict(radialaxis=dict(visible=True, range=[0, 100])),
                         showlegend=False,
                         margin=dict(l=40, r=40, t=30, b=30),
-                        height=360
+                        height=380
                     )
                     st.plotly_chart(fig, use_container_width=True)
 
                 # ----------------------------------------------------
-                # 当日用：採用可否の判断軸 ＆ 配属・活用検討レポート
+                # 当日用：Gemini APIによる動的分析＆選考・配属レポート
                 # ----------------------------------------------------
                 st.markdown("---")
                 st.markdown("### 📝 AI選考評価・採用＆配属検討レポート")
@@ -244,45 +345,12 @@ else:
                 saved_memo = selected_candidate.get("ai_memo", "")
                 
                 if not saved_memo:
-                    if "Fi" in candidate_types or "寄り添" in candidate_text or "患者" in candidate_text:
-                        default_memo = (
-                            f"【AI選考評価＆配属活用レポート】\n"
-                            f"■ 思考傾向・特性: 個人の感情や価値観に深く寄り添う共感・内省型（Fi/Fe優位）\n"
-                            f"■ 採用可否にあたっての判断軸:\n"
-                            f"  ・単に数値成果のみを追う環境より、理念や意義への共感が高まる場面で本領を発揮します。\n"
-                            f"  ・自社の組織文化やチーム理念とのマッチ度合いを主たる合否判断基準とすることを推奨します。\n"
-                            f"■ 採用後の配属・活用アプローチ:\n"
-                            f"  ・適性配属: 顧客やチームとの丁寧な信頼関係構築が求められる部署（対人サービス、CS、育成担当等）\n"
-                            f"  ・育成のコツ: 業務の「やり方」だけでなく「なぜその業務が重要か」という意義や価値を伝えると成長が加速します。\n"
-                            f"■ 選考最終所感・面接官メモ（以下に最終判断や申し送り事項を自由にお書きください）:\n"
-                        )
-                    elif "Te" in candidate_types or "論理" in candidate_text or "合理" in candidate_text:
-                        default_memo = (
-                            f"【AI選考評価＆配属活用レポート】\n"
-                            f"■ 思考傾向・特性: 目的達成や合理的成果、構造化を重視する効率思考型（Te/Ti優位）\n"
-                            f"■ 採用可否にあたっての判断軸:\n"
-                            f"  ・課題整理力と高い実行力を持ち、即戦力としての成果創出が期待できます。\n"
-                            f"  ・既存の業務プロセスや目標設定に対して納得感を持ってコミットできるかを合否判断基準として検討ください。\n"
-                            f"■ 採用後の配属・活用アプローチ:\n"
-                            f"  ・適性配属: 目標や役割が明確な部署、業務改善・プロジェクト推進が期待されるポジション\n"
-                            f"  ・育成のコツ: 裁量権と明確な指標（KPI）を与え、自主的に計画を立てて推進させる環境で強みが活きます。\n"
-                            f"■ 選考最終所感・面接官メモ（以下に最終判断や申し送り事項を自由にお書きください）:\n"
-                        )
-                    else:
-                        default_memo = (
-                            f"【AI選考評価＆配属活用レポート】\n"
-                            f"■ 思考傾向・特性: 記述内容と属性に基づくバランス型の適性思考パターン\n"
-                            f"■ 採用可否にあたっての判断軸:\n"
-                            f"  ・極端な偏りがなく、多様な業務環境や人間関係に対して柔軟に適応できる柔軟性があります。\n"
-                            f"■ 採用後の配属・活用アプローチ:\n"
-                            f"  ・適性配属: チーム間の調整役や複数タスクをこなすマルチポジション\n"
-                            f"  ・育成のコツ: 早期に複数の業務を体験させ、より適性の高い専門分野を一緒に見出していくプロセスが有効です。\n"
-                            f"■ 選考最終所感・面接官メモ（以下に最終判断や申し送り事項を自由にお書きください）:\n"
-                        )
+                    with st.spinner("記述内容を分析し、選考評価・配属検討レポートを作成中..."):
+                        default_memo = generate_gemini_report_day(selected_candidate.get('name'), candidate_text.strip())
                 else:
                     default_memo = saved_memo
 
-                memo_input = st.text_area("AI詳細レポート 兼 選考・配属メモ", value=default_memo, height=220)
+                memo_input = st.text_area("AI詳細レポート 兼 選考・配属メモ", value=default_memo, height=260)
                 
                 btn_c1, btn_c2 = st.columns([1, 1])
                 
