@@ -131,8 +131,8 @@ def calculate_scores(text, types_list):
         scores[k] = max(10, min(95, scores[k]))
     return scores
 
-# Gemini安全生成関数（完全日本語・長所短所混在・当日用シビア評価）
-def generate_gemini_report_day(name, text):
+# Gemini安全生成関数（当日用：選考評価＆配属活用レポート）
+def generate_gemini_report_day_actual(name, text):
     prompt = f"""【最重要命令】
 出力テキストには英語を一切使用せず、すべて日本語のみで出力してください。システム指示やプロンプト文面の英語を出力に含めることは厳禁です。
 
@@ -184,7 +184,7 @@ def generate_gemini_report_day(name, text):
     except Exception:
         pass
 
-    # フォールバックエンジン（完全日本語・長所短所シビア評価）
+    # フォールバックエンジン（当日用）
     bad_keywords = ["セックス", "オナニー", "ブルマー", "スケベ", "暴れ", "死ね", "殺す", "風俗"]
     if any(k in text for k in bad_keywords):
         return (
@@ -237,7 +237,7 @@ if not st.session_state.is_admin:
     st.sidebar.subheader("🔒 管理者ログイン")
     password_input = st.sidebar.text_input("パスワードを入力", type="password")
     if st.sidebar.button("ログイン"):
-        if password_input == "7777":  # 自分用パスワード
+        if password_input == "7777":
             st.session_state.is_admin = True
             st.rerun()
         else:
@@ -363,18 +363,20 @@ else:
                     st.plotly_chart(fig, use_container_width=True)
 
                 # ----------------------------------------------------
-                # 当日用：Gemini APIによる動的分析＆選考・配属レポート
+                # 当日用：前日用の文面が保存されている場合は強制的に「選考評価＆配属活用レポート」に上書き生成
                 # ----------------------------------------------------
                 st.markdown("---")
                 st.markdown("### 📝 AI選考評価・採用＆配属検討レポート")
                 
                 saved_memo = selected_candidate.get("ai_memo", "")
                 
+                # 前日用のタイトルが含まれている、または英語が混入している場合は、当日用レポートに強制上書きする
+                is_before_version = "AI面接事前準備レポート" in str(saved_memo)
                 is_invalid_english = any(eng in str(saved_memo) for eng in ["Applicant", "Goal", "Constraints", "Role:", "Description:", "Content:"])
                 
-                if not saved_memo or is_invalid_english:
-                    with st.spinner("記述内容を分析し、完全な日本語レポートを作成中..."):
-                        default_memo = generate_gemini_report_day(selected_candidate.get('name'), candidate_text.strip())
+                if not saved_memo or is_before_version or is_invalid_english:
+                    with st.spinner("当日用の選考評価＆配属活用レポートを作成中..."):
+                        default_memo = generate_gemini_report_day_actual(selected_candidate.get('name'), candidate_text.strip())
                         try:
                             supabase.table("candidate_responses").update({"ai_memo": default_memo}).eq("id", record_id).execute()
                         except Exception:
