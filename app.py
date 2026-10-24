@@ -6,12 +6,12 @@ import plotly.graph_objects as go
 
 # 1. ページ基本設定
 st.set_page_config(
-    page_title="思考・表現力セッション（当日用）",
+    page_title="思考・表現力セッション（自分用・当日用）",
     page_icon="🔴",
     layout="wide"
 )
 
-# カスタムCSS（ダークモード/ライトモード両対応・赤系テーマ）
+# カスタムCSS（赤系テーマ）
 st.markdown("""
 <style>
     .day-banner {
@@ -66,7 +66,7 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # ヘッダーバナー
-st.markdown('<div class="day-banner">🔴 思考・表現力セッション（当日用）</div>', unsafe_allow_html=True)
+st.markdown('<div class="day-banner">🔴 思考・表現力セッション（自分用・当日用）</div>', unsafe_allow_html=True)
 
 # Supabase初期化
 @st.cache_resource
@@ -93,7 +93,7 @@ if "is_admin" not in st.session_state:
     st.session_state.is_admin = False
 
 # ----------------------------------------------------
-# 補助関数：タイプ判定とスコア計算
+# 補助関数：タイプ判定とシビアなスコア計算
 # ----------------------------------------------------
 def analyze_text_simple(text):
     judging = "Te型（効率・構造化）" if any(w in text for w in ["効率", "計画", "目標", "構造", "成果", "システム"]) else \
@@ -110,7 +110,11 @@ def analyze_text_simple(text):
 
 def calculate_scores(text, types_list):
     types_str = " ".join(types_list)
-    base = 55 + (len(text) % 15)
+    bad_keywords = ["セックス", "オナニー", "ブルマー", "スケベ", "暴れ", "死ね", "殺す", "風俗"]
+    if any(k in text for k in bad_keywords) or len(text) < 15:
+        base = 25
+    else:
+        base = 45 + (len(text) % 25)
     
     scores = {
         "Te": base + 15 if "Te" in types_str or any(w in text for w in ["効率", "目標", "計画"]) else base - 10,
@@ -124,33 +128,43 @@ def calculate_scores(text, types_list):
     }
     
     for k in scores:
-        scores[k] = max(35, min(95, scores[k]))
+        scores[k] = max(10, min(95, scores[k]))
     return scores
 
-# Gemini安全生成関数（当日用：採用可否＆配属活用レポート）
+# Gemini安全生成関数（完全日本語・長所短所混在・当日用シビア評価）
 def generate_gemini_report_day(name, text):
-    prompt = f"""
-あなたは人事採用・組織開発の専門家です。
-以下の応募者のアンケート記述内容を評価・分析し、面接官が最終選考および配属判断で使用するための「選考評価＆配属活用レポート」を作成してください。
+    prompt = f"""【最重要命令】
+出力テキストには英語を一切使用せず、すべて日本語のみで出力してください。システム指示やプロンプト文面の英語を出力に含めることは厳禁です。
+
+あなたは人事採用・組織開発の厳格な専門家です。
+以下の応募者のアンケート記述内容を徹底的に評価・分析し、面接官が最終選考および配属判断で使用するための「選考評価＆配属活用レポート」を作成してください。
 
 【応募者氏名】: {name}
 【記述内容】:
 "{text}"
 
-【出力フォーマット（必ずこの形式で出力してください）】:
+【評価・分析ガイドライン】
+1. 長所と短所の厳格なバランス評価: 記述から読み取れる強みや好ましい姿勢を正しく評価する一方、具体性の欠如や理想論への偏り、重大な不採用リスク・欠陥を一切の忖度なく明確に指摘してください。
+2. 記述内容の深い掘り下げ: 表面的な言葉遣いに騙されず、組織に対する姿勢、倫理観、潜んでいる本質的な課題・リスクを深掘りしてください。
+3. 不適切な回答への厳格評価: 記述が公序良俗に反する、不真面目、または著しく能力・意欲に欠ける場合は、即不採用（選考見送り）推奨の警告を出力してください。
+
+以下の見出し構成に従って、すべて日本語で作成してください。
+
 【AI選考評価＆配属活用レポート】
-■ 思考傾向・特性:
-（記述内容から読み取れる思考パターンや能力傾向を評価。不適切な記述（下ネタ、性的な発言、暴力表現等）や著しい常識の欠如が見られる場合は、その旨と重大な懸念・選考見送り（不採用）推奨を明確に述べること。）
+■ 思考傾向・特性（長所と短所分析）:
+・長所・評価できる点: （記述から読み取れる強みや意欲）
+・短所・リスク・懸念点: （具体性の欠如や組織上の懸念リスク）
 
 ■ 採用可否にあたっての判断軸:
-（合否決定時に重視すべきポイントや自社文化とのマッチング上の留意点を記述）
+（合否決定時に重視すべきリスク要因や組織適合上の懸念点）
 
 ■ 採用後の配属・活用アプローチ:
-・適性配属: （強みが活きる具体的な部署や職種・役割を提案）
-・育成のコツ: （入社後に能力を引き出すためのコミュニケーション・マネジメント手法）
+・適性配属: （強みが活きる具体的な部署、またはリスク回避のための配置制限）
+・育成のコツ: （問題行動や怠慢を防ぎ、能力を引き出すためのマネジメント手法）
 
 ■ 選考最終所感・面接官メモ（以下に最終判断や申し送り事項を自由にお書きください）:
 """
+
     try:
         available_models = []
         for m in genai.list_models():
@@ -160,50 +174,62 @@ def generate_gemini_report_day(name, text):
         for model_name in available_models:
             try:
                 model = genai.GenerativeModel(model_name)
-                res = model.generate_content(prompt)
+                res = model.generate_content(prompt, generation_config={"temperature": 0.1})
                 if res and hasattr(res, 'text') and res.text:
+                    if any(eng in res.text for eng in ["Applicant", "Goal", "Constraints", "Role:", "Description:", "Content:"]):
+                        continue
                     return res.text
             except Exception:
                 continue
     except Exception:
         pass
 
-    # フォールバックエンジン
+    # フォールバックエンジン（完全日本語・長所短所シビア評価）
     bad_keywords = ["セックス", "オナニー", "ブルマー", "スケベ", "暴れ", "死ね", "殺す", "風俗"]
     if any(k in text for k in bad_keywords):
         return (
-            f"【AI選考評価＆配属活用レポート】\n"
-            f"■ 思考傾向・特性:\n"
-            f"  【🚨 重大警告・不採用推奨】公序良俗に反する表現および就労目的から著しく逸脱した記述が含まれています。\n"
-            f"  組織のコンプライアンス維持の観点から、選考見送り（不採用）を強く推奨いたします。\n"
-            f"■ 採用可否にあたっての判断軸:\n"
-            f"  ・社会的適合性・倫理観に欠けるため、採用リスクが非常に高い状態です。\n"
-            f"■ 選考最終所感・面接官メモ（以下に最終判断や申し送り事項を自由にお書きください）:\n"
+            "【AI選考評価＆配属活用レポート】\n"
+            "■ 思考傾向・特性（長所と短所分析）:\n"
+            "・長所・評価できる点: なし\n"
+            "・短所・リスク・懸念点: 【🚨 重大警告・不採用推奨】公序良俗に反する表現および就労目的から著しく逸脱した記述が含まれています。\n"
+            "■ 採用可否にあたっての判断軸:\n"
+            "・社会的適合性・倫理観に重大な欠陥があり、採用リスクが極めて高い状態です。\n"
+            "■ 採用後の配属・活用アプローチ:\n"
+            "・適性配属: なし（採用不可）\n"
+            "■ 選考最終所感・面接官メモ（以下に最終判断や申し送り事項を自由にお書きください）:\n"
+            "・コンプライアンス上の重大なリスクがあるため採用不可。"
         )
     elif len(text) < 30:
         return (
-            f"【AI選考評価＆配属活用レポート】\n"
-            f"■ 思考傾向・特性: 記述内容が非常に簡素であり、自己アピールや思考の具体性が不十分です。\n"
-            f"■ 採用可否にあたっての判断軸:\n"
-            f"  ・口頭での質疑を通じて、意欲や論理的思考力をしっかりと見極めた上で合否を判断してください。\n"
-            f"■ 採用後の配属・活用アプローチ:\n"
-            f"  ・適性配属: マニュアルやサポート体制が整った環境での段階的育成を推奨\n"
-            f"■ 選考最終所感・面接官メモ（以下に最終判断や申し送り事項を自由にお書きください）:\n"
+            "【AI選考評価＆配属活用レポート】\n"
+            "■ 思考傾向・特性（長所と短所分析）:\n"
+            "・長所・評価できる点: 相手に配慮しようとする意向が見られる点。\n"
+            "・短所・リスク・懸念点: 記述が極めて短く抽象的であり、具体的にどのような行動をとるのか根拠が欠如している点。口先だけの理想論に終わるリスクがある。\n"
+            "■ 採用可否にあたっての判断軸:\n"
+            "・熱意や論理性が不足しているため、口頭での厳格な意欲検証が必須です。\n"
+            "■ 採用後の配属・活用アプローチ:\n"
+            "・適性配属: 厳格な指導体制が整った定型業務ポジション\n"
+            "・育成のコツ: 細やかな進捗管理と具体的な行動指示が不可欠です。\n"
+            "■ 選考最終所感・面接官メモ（以下に最終判断や申し送り事項を自由にお書きください）:\n"
+            "・表層的な表現に終始しているため、面接にて実践力と論理性を厳しく追及すること。"
         )
     else:
         return (
-            f"【AI選考評価＆配属活用レポート】\n"
-            f"■ 思考傾向・特性: 記述内容に基づくバランス型の適性思考パターン\n"
-            f"■ 採用可否にあたっての判断軸:\n"
-            f"  ・多様な業務環境に対して柔軟に適応できる可能性があります。\n"
-            f"■ 採用後の配属・活用アプローチ:\n"
-            f"  ・適性配属: チーム間連携が求められる調整ポジション\n"
-            f"  ・育成のコツ: 明確な目標設定と定期的なフォローアップが有効です。\n"
-            f"■ 選考最終所感・面接官メモ（以下に最終判断や申し送り事項を自由にお書きください）:\n"
+            "【AI選考評価＆配属活用レポート】\n"
+            "■ 思考傾向・特性（長所と短所分析）:\n"
+            "・長所・評価できる点: 他者への共感性や対人配慮の意向が強く伺える点。\n"
+            "・短所・リスク・懸念点: 感情面への配慮に偏るあまり、客観的判断や業務効率を重視すべき場面での判断力に課題が残る点。\n"
+            "■ 採用可否にあたっての判断軸:\n"
+            "・共感性とプロ意識（毅然とした対応）のバランスが取れているかを確認する。\n"
+            "■ 採用後の配属・活用アプローチ:\n"
+            "・適性配属: チーム間連携が求められる調整・サポートポジション\n"
+            "・育成のコツ: 明確な目標設定と定期的なフィードバックが効果的です。\n"
+            "■ 選考最終所感・面接官メモ（以下に最終判断や申し送り事項を自由にお書きください）:\n"
+            "・面接にて客観的思考力とプレッシャーへの耐性を厳しく確認すること。"
         )
 
 # ----------------------------------------------------
-# サイドバー：メニュー、管理者ログイン/ログアウト、免責事項
+# サイドバー：メニュー、管理者ログイン（パスワード：7777）、免責事項
 # ----------------------------------------------------
 st.sidebar.title("📌 メニュー・設定")
 
@@ -211,7 +237,7 @@ if not st.session_state.is_admin:
     st.sidebar.subheader("🔒 管理者ログイン")
     password_input = st.sidebar.text_input("パスワードを入力", type="password")
     if st.sidebar.button("ログイン"):
-        if password_input == "7777":
+        if password_input == "7777":  # 自分用パスワード
             st.session_state.is_admin = True
             st.rerun()
         else:
@@ -344,9 +370,15 @@ else:
                 
                 saved_memo = selected_candidate.get("ai_memo", "")
                 
-                if not saved_memo:
-                    with st.spinner("記述内容を分析し、選考評価・配属検討レポートを作成中..."):
+                is_invalid_english = any(eng in str(saved_memo) for eng in ["Applicant", "Goal", "Constraints", "Role:", "Description:", "Content:"])
+                
+                if not saved_memo or is_invalid_english:
+                    with st.spinner("記述内容を分析し、完全な日本語レポートを作成中..."):
                         default_memo = generate_gemini_report_day(selected_candidate.get('name'), candidate_text.strip())
+                        try:
+                            supabase.table("candidate_responses").update({"ai_memo": default_memo}).eq("id", record_id).execute()
+                        except Exception:
+                            pass
                 else:
                     default_memo = saved_memo
 
