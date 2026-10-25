@@ -65,7 +65,6 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# ヘッダーバナー
 st.markdown('<div class="day-banner">🔴 思考・表現力セッション（自分用・当日用）</div>', unsafe_allow_html=True)
 
 # Supabase初期化
@@ -88,12 +87,11 @@ if "GEMINI_API_KEY" in st.secrets:
     except Exception:
         gemini_ready = False
 
-# セッション状態の初期化
 if "is_admin" not in st.session_state:
     st.session_state.is_admin = False
 
 # ----------------------------------------------------
-# 補助関数：タイプ判定とシビアなスコア計算
+# 補助関数（シンプル・全職種共通ロジック）
 # ----------------------------------------------------
 def analyze_text_simple(text):
     judging = "Te型（効率・構造化）" if any(w in text for w in ["効率", "計画", "目標", "構造", "成果", "システム"]) else \
@@ -110,9 +108,11 @@ def analyze_text_simple(text):
 
 def calculate_scores(text, types_list):
     types_str = " ".join(types_list)
-    bad_keywords = ["セックス", "オナニー", "ブルマー", "スケベ", "暴れ", "死ね", "殺す", "風俗"]
-    if any(k in text for k in bad_keywords) or len(text) < 15:
-        base = 25
+    risk_keywords = ["違反", "不正", "力こそが正義", "馬鹿", "軍人", "SEX", "オナニー", "ブルマー", "いびっ"]
+    has_risk = any(k in text for k in risk_keywords)
+    
+    if len(text) < 30 or has_risk:
+        base = 20
     else:
         base = 45 + (len(text) % 25)
     
@@ -127,110 +127,61 @@ def calculate_scores(text, types_list):
         "Ni": base + 10 if "Ni" in types_str or any(w in text for w in ["洞察", "未来", "ビジョン"]) else base - 10,
     }
     
+    if len(text) < 30 or has_risk:
+        for k in scores:
+            scores[k] = min(scores[k], 25)
+            
     for k in scores:
         scores[k] = max(10, min(95, scores[k]))
     return scores
 
-# Gemini安全生成関数（当日用：独立した選考評価＆適正配置・労務管理レポート）
-def generate_gemini_report_day_actual(name, text):
-    prompt = f"""【最重要命令】
-出力テキストには英語を一切使用せず、すべて日本語のみで出力してください。「面接」という単語や面接前提の観察指示は一切含めないでください。
-
-あなたは人事・労務管理および組織適性判定の厳格な専門家です。
-以下の応募者のアンケート記述内容を徹底的に分析し、面接を前提としない独立した「選考評価＆適正配置・労務管理レポート」を作成してください。
-
-【応募者氏名】: {name}
-【記述内容】:
-"{text}"
-
-【評価・分析ガイドライン】
-1. 独立した選考判定: 記述内容の論理性、具体性、倫理観、組織適合リスクを評価し、本システム単体での採否判定軸を提示してください。
-2. 配置および労務管理上の留意点: 採用した場合の適正な配置先、トラブル防止のための労務管理・マネジメント上の具体的な注意点を明記してください。
-3. 厳格なリスク指摘: 単なる抽象論や感情論に偏っている点、業務上のボトルネックとなり得る短所を忖度なく指摘してください。
-
-以下の見出し構成に従って、すべて日本語で作成してください。
-
-【AI選考評価＆配属活用レポート】
-■ 思考傾向・特性（長所と短所分析）:
-・長所・評価できる点: （記述から読み取れる強みや意欲）
-・短所・リスク・懸念点: （具体性の欠如や組織上の懸念リスク）
-
-■ 採否判定にあたっての評価軸:
-（本判定結果に基づく採用の可否判断および重要リスク）
-
-■ 採用後の適正配置・労務管理アプローチ:
-・適正配属: （強みが活きる具体的な部署、またはリスク回避のための配置制限）
-・労務管理・マネジメントの留意点: （トラブルを防ぎ、安定的なパフォーマンスを発揮させるための具体的な管理アプローチ）
-
-■ 最終選考評価メモ:
-"""
-
-    try:
-        available_models = []
-        for m in genai.list_models():
-            if 'generateContent' in m.supported_generation_methods:
-                available_models.append(m.name)
-        
-        for model_name in available_models:
-            try:
-                model = genai.GenerativeModel(model_name)
-                res = model.generate_content(prompt, generation_config={"temperature": 0.1})
-                if res and hasattr(res, 'text') and res.text:
-                    if any(eng in res.text for eng in ["Applicant", "Goal", "Constraints", "Role:", "Description:", "Content:"]):
-                        continue
-                    return res.text
-            except Exception:
-                continue
-    except Exception:
-        pass
-
-    # フォールバックエンジン（独立判定・労務管理特化）
-    bad_keywords = ["セックス", "オナニー", "ブルマー", "スケベ", "暴れ", "死ね", "殺す", "風俗"]
-    if any(k in text for k in bad_keywords):
+def get_default_self_day_report(text):
+    risk_keywords = ["違反", "不正", "力こそが正義", "馬鹿", "軍人", "SEX", "オナニー", "ブルマー", "いびっ"]
+    if any(k in text for k in risk_keywords):
         return (
             "【AI選考評価＆配属活用レポート】\n"
             "■ 思考傾向・特性（長所と短所分析）:\n"
-            "・長所・評価できる点: なし\n"
-            "・短所・リスク・懸念点: 【🚨 重大警告・不採用推奨】公序良俗に反する表現および就労目的から著しく逸脱した記述が含まれています。\n"
+            "・長所・評価できる点: 特になし\n"
+            "・短所・リスク・懸念点: 【🚨 重大コンプライアンスリスク】組織の規範や法令を軽視する懸念があり、ガバナンス上の問題を引き起こすリスクが高い状態です。\n"
             "■ 採否判定にあたっての評価軸:\n"
-            "・社会的適合性・倫理観に重大な欠陥があり、採用リスクが極めて高いため【不採用】と判定します。\n"
+            "・企業のガバナンスおよび社会的信用を損なう危険性が高いため【不採用】を推奨します。\n"
             "■ 採用後の適正配置・労務管理アプローチ:\n"
-            "・適性配属: なし（採用不可）\n"
+            "・適性配属: 採用不可\n"
             "・労務管理・マネジメントの留意点: 採用不可のため該当なし。\n"
             "■ 最終選考評価メモ:\n"
-            "・コンプライアンス上の重大なリスクがあるため採用不可。"
+            "・コンプライアンス上の重大リスクのため採用不可。"
         )
     elif len(text) < 30:
         return (
             "【AI選考評価＆配属活用レポート】\n"
             "■ 思考傾向・特性（長所と短所分析）:\n"
-            "・長所・評価できる点: 他者への配慮や姿勢を示そうとする点。\n"
-            "・短所・リスク・懸念点: 記述が極めて短く抽象的であり、具体的にどのような行動をとるのか根拠が欠如している点。口先だけの理想論に終わるリスクがある。\n"
+            "・長所・評価できる点: 簡潔に回答しようとする姿勢。\n"
+            "・短所・リスク・懸念点: 記述が極めて抽象的であり、具体性や客観的な論理根拠が不足している点。\n"
             "■ 採否判定にあたっての評価軸:\n"
-            "・行動の具体性や論理性が欠如しているため、慎重な採否判断が必要です。\n"
+            "・業務遂行に必要な論理的思考力と具体性に課題があるため慎重判定を推奨。\n"
             "■ 採用後の適正配置・労務管理アプローチ:\n"
-            "・適性配属: 明確な指示体系と定型業務が整備されたポジション\n"
-            "・労務管理・マネジメントの留意点: 曖昧な指示を避け、業務プロセスの可視化と定期的チェックによる進捗管理を徹底すること。\n"
+            "・適性配属: 明確な手順書（SOP）が整備された定型ポジション\n"
+            "・労務管理・マネジメントの留意点: 業務プロセスの可視化と定期的チェックを徹底すること。\n"
             "■ 最終選考評価メモ:\n"
-            "・表層的な表現に終始しているため、業務実行時の論理性と達成意欲に課題あり。"
+            "・表層的記述のため業務実行時の論理的根拠と達成力に検証が必要。"
         )
     else:
         return (
             "【AI選考評価＆配属活用レポート】\n"
             "■ 思考傾向・特性（長所と短所分析）:\n"
-            "・長所・評価できる点: 他者への共感性や対人配慮の意向が強く伺える点。\n"
-            "・短所・リスク・懸念点: 感情面への配慮に偏るあまり、客観的判断や業務効率を重視すべき場面での判断力に課題が残る点。\n"
+            "・長所・評価できる点: 自身の考えや意向を一定の表現力で記述できている点。\n"
+            "・短所・リスク・懸念点: 主観的な思考に偏る場合があり、組織ルール遵守や客観的判断のバランス確認が必要な点。\n"
             "■ 採否判定にあたっての評価軸:\n"
-            "・組織の規律遵守と客観的思考が求められる職種においては適性に懸念が残るため、総合的な慎重判定を推奨。\n"
+            "・組織の規律遵守および客観的成果基準に適合できるか総合判定を推奨。\n"
             "■ 採用後の適正配置・労務管理アプローチ:\n"
-            "・適性配属: チーム間連携やサポート業務を中心とする調整ポジション\n"
-            "・労務管理・マネジメントの留意点: 感情的判断に流されないようルール遵守を教育し、客観的な成果基準に基づいた評価管理を行うこと。\n"
+            "・適性配属: チーム間連携やサポート・調整を中心とするポジション\n"
+            "・労務管理・マネジメントの留意点: 客観的な成果指標に基づいた評価管理を行うこと。\n"
             "■ 最終選考評価メモ:\n"
-            "・対人配慮は高いが、客観的判断力およびプレッシャー耐性のマネジメントが不可欠。"
+            "・客観的判断力および組織適合性のマネジメントが不可欠。"
         )
 
 # ----------------------------------------------------
-# サイドバー：メニュー、管理者ログイン（パスワード：7777）、免責事項
+# サイドバー
 # ----------------------------------------------------
 st.sidebar.title("📌 メニュー・設定")
 
@@ -253,31 +204,20 @@ st.sidebar.markdown("---")
 st.sidebar.subheader("⚠️ 注意事項・禁止事項・免責事項")
 st.sidebar.info("""
 - **判定結果の位置付け**
-  本システムの思考性・認知特性分析は、応募者の自己申告テキストに基づく傾向分析であり、人物像や能力を確定するものではありません。
+  本システムの思考性・認知特性分析は傾向分析であり、人物像を確定するものではありません。
 - **採用判断の責任**
-  AI分析および本判定結果は選考・採否決定における参考材料（判断の補助ツール）です。**最終的な選考判定および合否決定、配属判断は、選考責任者の責任において行ってください。**
-- **個人情報の管理・禁止事項**
-  採用選考および労務管理以外の目的での使用、ならびに第三者への無断漏洩・共有は厳禁です。
+  最終的な選考判定および合否決定の責任は選考責任者に帰属します。
 """)
 
 # ----------------------------------------------------
-# A. 応募者入力画面（当日提出用）
+# A. 応募者入力画面
 # ----------------------------------------------------
 if not st.session_state.is_admin:
     st.markdown('<h1 class="day-title">思考・表現力アンケート入力フォーム</h1>', unsafe_allow_html=True)
     
-    st.markdown("""
-    <div class="instruction-box">
-        <h4>【ご回答にあたってのお願い】</h4>
-        <p>本アンケートは、皆様の日常的な考え方や仕事における思考傾向を把握し、相互の理解を深めるためのものです。<br>
-        正解・不正解はありませんので、ご自身の率直なお考え・お気持ちをそのままご記入ください。</p>
-    </div>
-    """, unsafe_allow_html=True)
-
     with st.form(key="candidate_form_day"):
         applicant_name = st.text_input("お名前（氏名）", placeholder="例：山田 太郎")
-        applicant_text = st.text_area("思考・表現力に関する記述", height=150, placeholder="ご自身の考えや価値観、仕事で大切にしていること等を自由にご記入ください。")
-        
+        applicant_text = st.text_area("思考・表現力に関する記述", height=150)
         submit_button = st.form_submit_button(label="提出する")
 
     if submit_button:
@@ -286,23 +226,19 @@ if not st.session_state.is_admin:
         else:
             try:
                 types_val = analyze_text_simple(applicant_text.strip())
-                
                 new_data = {
                     "name": applicant_name.strip(),
                     "text": applicant_text.strip(),
                     "types": types_val,
                     "app_type": "day"
                 }
-                
                 supabase.table("candidate_responses").insert(new_data).execute()
-                
-                st.success("提出が完了いたしました。ご協力ありがとうございました！")
-                st.info("※入力内容は正常に送信されました。この画面を閉じていただいて構いません。")
+                st.success("提出が完了いたしました。")
             except Exception as e:
                 st.error(f"送信時にエラーが発生しました: {e}")
 
 # ----------------------------------------------------
-# B. 管理者画面（最終選考・採否＆適正配置・労務管理用）
+# B. 管理者画面（ai_memo_self_day カラムを使用）
 # ----------------------------------------------------
 else:
     st.markdown('<h1 class="day-title">【管理者用】選考判定・適正配置＆労務管理システム</h1>', unsafe_allow_html=True)
@@ -363,25 +299,17 @@ else:
                     )
                     st.plotly_chart(fig, use_container_width=True)
 
-                # ----------------------------------------------------
-                # 当日用：面接文面や前日用メモがある場合は即座に「選考評価＆配属活用レポート」に強制上書き
-                # ----------------------------------------------------
                 st.markdown("---")
                 st.markdown("### 📝 AI選考評価・採否＆適性配置・労務管理レポート")
                 
-                saved_memo = selected_candidate.get("ai_memo", "")
+                saved_memo = selected_candidate.get("ai_memo_self_day", "")
                 
-                is_before_version = "AI面接事前準備レポート" in str(saved_memo)
-                has_interview_word = "面接にて" in str(saved_memo) or "面接官" in str(saved_memo)
-                is_invalid_english = any(eng in str(saved_memo) for eng in ["Applicant", "Goal", "Constraints", "Role:", "Description:", "Content:"])
-                
-                if not saved_memo or is_before_version or has_interview_word or is_invalid_english:
-                    with st.spinner("当日用の採否判定＆労務管理レポートを作成中..."):
-                        default_memo = generate_gemini_report_day_actual(selected_candidate.get('name'), candidate_text.strip())
-                        try:
-                            supabase.table("candidate_responses").update({"ai_memo": default_memo}).eq("id", record_id).execute()
-                        except Exception:
-                            pass
+                if not saved_memo:
+                    default_memo = get_default_self_day_report(candidate_text.strip())
+                    try:
+                        supabase.table("candidate_responses").update({"ai_memo_self_day": default_memo}).eq("id", record_id).execute()
+                    except Exception:
+                        pass
                 else:
                     default_memo = saved_memo
 
@@ -392,8 +320,8 @@ else:
                 with btn_c1:
                     if st.button("💾 評価メモをデータベースに保存する"):
                         try:
-                            supabase.table("candidate_responses").update({"ai_memo": memo_input}).eq("id", record_id).execute()
-                            st.success("評価・労務メモを保存しました。")
+                            supabase.table("candidate_responses").update({"ai_memo_self_day": memo_input}).eq("id", record_id).execute()
+                            st.success("評価メモを保存しました。")
                         except Exception as e:
                             st.error(f"保存エラー: {e}")
 
