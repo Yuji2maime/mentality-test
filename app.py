@@ -105,16 +105,6 @@ def analyze_text_simple(text):
                  "Ni（本質・洞察）"
                  
     return [judging, f"補助{perceiving}"]
-
-def calculate_scores(text, types_list):
-    types_str = " ".join(types_list)
-    risk_keywords = ["違反", "不正", "力こそが正義", "馬鹿", "軍人", "SEX", "オナニー", "ブルマー", "いびっ"]
-    has_risk = any(k in text for k in risk_keywords)
-    
-    if len(text) < 30 or has_risk:
-        base = 20
-    else:
-        base = 45 + (len(text) % 25)
     
     scores = {
         "Te": base + 15 if "Te" in types_str or any(w in text for w in ["効率", "目標", "計画"]) else base - 10,
