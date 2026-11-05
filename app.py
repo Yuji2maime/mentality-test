@@ -133,7 +133,7 @@ def calculate_scores(text, types_list):
 
 def get_default_self_day_report(text):
     
-    elif len(text) < 30:
+    if len(text) < 30:
         return (
             "【AI選考評価＆配属活用レポート】\n"
             "■ 思考傾向・特性（長所と短所分析）:\n"
