@@ -108,7 +108,7 @@ def analyze_text_simple(text):
 
 def calculate_scores(text, types_list):
     types_str = " ".join(types_list) if isinstance(types_list, list) else str(types_list)
-    
+    has_risk = False
     if not text:
         base = 45
     else:
