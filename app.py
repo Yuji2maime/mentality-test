@@ -110,7 +110,6 @@ def calculate_scores(text, types_list):
     types_str = " ".join(types_list) if isinstance(types_list, list) else str(types_list)
     
     if not text:
-    if not text:
         base = 45
     else:
         base = 45 + (len(text) % 25)
